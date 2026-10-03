@@ -479,14 +479,14 @@ CREATE INDEX "AIInsight_type_generatedAt_idx" ON "AIInsight"("type", "generatedA
 -- never hard-code them. ON CONFLICT DO NOTHING keeps the migration
 -- idempotent so it can be re-run safely.
 
-INSERT INTO "AttendanceCode" ("code", "labelEn", "labelAr", "dayValue", "countsAsPresent", "sortOrder")
+INSERT INTO "AttendanceCode" ("code", "labelEn", "labelAr", "dayValue", "countsAsPresent", "sortOrder", "updatedAt")
 VALUES
-  ('P',  'Present',                 'حاضر',              1.00, true,  1),
-  ('PP', 'Present — Double Shift',  'حاضر — ورديتان',    2.00, true,  2),
-  ('12', 'One and a Half Shift',    'وردية ونصف',        1.50, true,  3),
-  ('6',  'Half Shift',              'نصف وردية',         0.50, true,  4),
-  ('A',  'Absent',                  'غياب',              0.00, false, 5),
-  ('X',  'Double Absence',          'غياب مضاعف',       -2.00, false, 6),
-  ('AL', 'Annual Leave',            'إجازة سنوية',       0.00, false, 7),
-  ('SL', 'Sick Leave',              'إجازة مرضية',       0.00, false, 8)
+  ('P',  'Present',                 'حاضر',              1.00, true,  1,  now()),
+  ('PP', 'Present — Double Shift',  'حاضر — ورديتان',    2.00, true,  2,  now()),
+  ('12', 'One and a Half Shift',    'وردية ونصف',        1.50, true,  3,  now()),
+  ('6',  'Half Shift',              'نصف وردية',         0.50, true,  4,  now()),
+  ('A',  'Absent',                  'غياب',              0.00, false, 5,  now()),
+  ('X',  'Double Absence',          'غياب مضاعف',       -2.00, false, 6,  now()),
+  ('AL', 'Annual Leave',            'إجازة سنوية',       0.00, false, 7,  now()),
+  ('SL', 'Sick Leave',              'إجازة مرضية',       0.00, false, 8,  now())
 ON CONFLICT ("code") DO NOTHING;
