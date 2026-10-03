@@ -119,6 +119,7 @@ model User {
   approvedTransfers  Transfer[]     @relation("TransferApprover")
   notifications      Notification[]
   auditLogs          AuditLog[]
+  sessions           Session[]
 
   conductedInterviews        Interview[]
   verifiedCandidateDocuments CandidateDocument[]
@@ -126,6 +127,22 @@ model User {
 
   @@index([roleId])
   @@index([isActive])
+}
+
+/// Refresh-token sessions for cookie auth (lib/auth, modules/auth).
+/// The refresh token itself is never stored — only its SHA-256 hash.
+/// Rotation: on refresh the old row is deleted and a new one created.
+model Session {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique // SHA-256 hex of the refresh token
+  expiresAt  DateTime @db.Timestamptz
+  createdAt  DateTime @default(now()) @db.Timestamptz
+  lastUsedAt DateTime @default(now()) @db.Timestamptz
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model Role {
