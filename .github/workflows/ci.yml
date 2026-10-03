@@ -33,6 +33,10 @@ jobs:
       - name: Validate Prisma schema
         # NOTE: `prisma validate` downloads the query engines on first run,
         # so this step needs network access to Prisma's CDN.
+        # `validate` resolves env() in the datasource block (getConfig), so a
+        # dummy DATABASE_URL is required even though no DB connection is made.
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/easy_roster_ci
         run: npx prisma validate
 
       - name: Build
