@@ -14,6 +14,7 @@ export default function HomePage({
 }) {
   const t = useTranslations("home");
   const common = useTranslations("common");
+  const auth = useTranslations("auth");
   const other: "ar" | "en" = isLocale(locale) && locale === "ar" ? "en" : "ar";
 
   const modules = [
@@ -44,12 +45,20 @@ export default function HomePage({
           <h1 className="mt-2 text-3xl font-bold">{t("title")}</h1>
           <p className="mt-3 max-w-2xl text-slate-600">{t("subtitle")}</p>
         </div>
-        <Link
-          href={`/${other}`}
-          className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100"
-        >
-          {common("language")}: {common("locales." + other)}
-        </Link>
+        <div className="flex shrink-0 gap-2">
+          <Link
+            href={`/${locale}/login`}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+          >
+            {auth("signIn")}
+          </Link>
+          <Link
+            href={`/${other}`}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100"
+          >
+            {common("language")}: {common("locales." + other)}
+          </Link>
+        </div>
       </header>
 
       <section className="mt-10">
