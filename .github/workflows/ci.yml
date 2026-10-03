@@ -25,7 +25,7 @@ jobs:
       - name: Lint
         # Placeholder: ESLint for src/lib is not configured yet.
         # Add eslint.config.mjs + a "lint:lib" script, then replace this step.
-        run: echo "lint: not configured for src/lib yet (deferred)"
+        run: 'echo "lint: not configured for src/lib yet (deferred)"'
 
       - name: Unit tests
         run: npm test
