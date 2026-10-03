@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Base font stack with Arabic support (no webfont download at build time;
+ * keeps `next build` working offline). Tahoma / Segoe UI render Arabic well.
+ */
+:root {
+  --font-sans:
+    "IBM Plex Sans Arabic", "Tajawal", "Segoe UI", Tahoma, Arial,
+    "Inter", system-ui, sans-serif;
+}
+
+html {
+  font-family: var(--font-sans);
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
+
+/* RTL: keep numeric/Latin runs left-to-right inside RTL text */
+[dir="rtl"] .ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+}

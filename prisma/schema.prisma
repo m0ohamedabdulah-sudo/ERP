@@ -1,0 +1,1035 @@
+// ============================================================
+// Easy Roster — PostgreSQL database schema (Phase 1)
+// Workforce / HR / Attendance / Roster / Manpower / Shortage
+// ============================================================
+// Conventions:
+// - UUID primary keys everywhere.
+// - createdAt / updatedAt on all models; deletedAt for soft delete
+//   on master-data models (never hard-delete business history).
+// - Business rules (attendance day-values, shortage thresholds,
+//   payroll rules) are DATA, not code: see AttendanceCode and the
+//   Settings/config layer described in docs/ARCHITECTURE.md.
+// - One central database: Sector/Site are organizational entities,
+//   never separate databases.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ------------------------- Enumerations -------------------------
+
+enum EmployeeStatus {
+  ACTIVE
+  ON_LEAVE
+  SUSPENDED
+  TRANSFERRED
+  RESIGNED
+  TERMINATED
+  BLACKLISTED
+  EXCLUDED
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  EMERGENCY
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum TransferStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+enum ShiftType {
+  MORNING
+  EVENING
+  NIGHT
+  DOUBLE
+  CUSTOM
+}
+
+enum RosterStatus {
+  DRAFT
+  PUBLISHED
+  LOCKED
+}
+
+/// Canonical attendance codes. The operational codes from the business
+/// spec (P, PP, 12, 6, A, X, AL, SL) are preserved via @map so the
+/// database stores exactly what operations teams already use.
+/// The *meaning* of each code (dayValue, countsAsPresent) lives on the
+/// AttendanceCode model and is configurable at runtime.
+enum AttendanceCodeEnum {
+  P
+  PP
+  ONE_AND_HALF  @map("12")
+  HALF_SHIFT    @map("6")
+  ABSENT        @map("A")
+  DOUBLE_ABSENT @map("X")
+  ANNUAL_LEAVE  @map("AL")
+  SICK_LEAVE    @map("SL")
+}
+
+enum ShortageSeverity {
+  NORMAL
+  WARNING
+  CRITICAL
+}
+
+// ------------------------- Identity & Access -------------------------
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  email        String    @unique
+  passwordHash String
+  fullName     String
+  phone        String?
+  roleId       String    @db.Uuid
+  role         Role      @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  managedSectors   Sector[] @relation("SectorManager")
+  inspectedSectors Sector[] @relation("SectorInspector")
+  managedSites     Site[]   @relation("SiteManager")
+  inspectedSites   Site[]   @relation("SiteInspector")
+
+  createdRosters     Roster[]       @relation("RosterCreator")
+  approvedLeaves     Leave[]        @relation("LeaveApprover")
+  requestedTransfers Transfer[]     @relation("TransferRequester")
+  approvedTransfers  Transfer[]     @relation("TransferApprover")
+  notifications      Notification[]
+  auditLogs          AuditLog[]
+
+  conductedInterviews        Interview[]
+  verifiedCandidateDocuments CandidateDocument[]
+  verifiedEmployeeDocuments  EmployeeDocument[]
+
+  @@index([roleId])
+  @@index([isActive])
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique // e.g. SUPER_ADMIN, SITE_MANAGER
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users           User[]
+  rolePermissions RolePermission[]
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique // e.g. "employees.view"
+  module      String // e.g. "employees"
+  description String?
+  createdAt   DateTime @default(now())
+
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  id           String     @id @default(uuid()) @db.Uuid
+  roleId       String     @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String     @db.Uuid
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+}
+
+// ------------------------- Organization -------------------------
+
+model Company {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sectors Sector[]
+}
+
+model Sector {
+  id          String    @id @default(uuid()) @db.Uuid
+  companyId   String    @db.Uuid
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  name        String
+  managerId   String?   @db.Uuid
+  manager     User?     @relation("SectorManager", fields: [managerId], references: [id], onDelete: SetNull)
+  inspectorId String?   @db.Uuid
+  inspector   User?     @relation("SectorInspector", fields: [inspectorId], references: [id], onDelete: SetNull)
+  isActive    Boolean   @default(true)
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  sites         Site[]
+  employees     Employee[]
+  transfersFrom Transfer[]  @relation("TransferFromSector")
+  transfersTo   Transfer[]  @relation("TransferToSector")
+  aiInsights    AIInsight[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@index([isActive])
+}
+
+model Site {
+  id               String    @id @default(uuid()) @db.Uuid
+  sectorId         String    @db.Uuid
+  sector           Sector    @relation(fields: [sectorId], references: [id], onDelete: Restrict)
+  name             String
+  clientName       String?
+  managerId        String?   @db.Uuid
+  manager          User?     @relation("SiteManager", fields: [managerId], references: [id], onDelete: SetNull)
+  inspectorId      String?   @db.Uuid
+  inspector        User?     @relation("SiteInspector", fields: [inspectorId], references: [id], onDelete: SetNull)
+  /// Cached denormalized total. Source of truth is ManpowerRequirement;
+  /// refresh via the manpower service whenever requirements change.
+  requiredManpower Int       @default(0)
+  isActive         Boolean   @default(true)
+  location         String?
+  contactName      String?
+  contactPhone     String?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  shifts               Shift[]
+  employees            Employee[]
+  rosters              Roster[]
+  rosterAssignments    RosterAssignment[]
+  attendances          Attendance[]
+  manpowerRequirements ManpowerRequirement[]
+  manpowerSnapshots    ManpowerSnapshot[]
+  shortages            Shortage[]
+  transfersFrom        Transfer[]            @relation("TransferFromSite")
+  transfersTo          Transfer[]            @relation("TransferToSite")
+  aiInsights           AIInsight[]
+  contractSites        ContractSite[]
+  desiredByCandidates  Candidate[]
+
+  @@unique([sectorId, name])
+  @@index([sectorId])
+  @@index([isActive])
+}
+
+model Position {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique // e.g. GUARD, SUPERVISOR
+  titleEn     String
+  titleAr     String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  employees Employee[]
+
+  contractRates ContractRate[]
+
+  desiredByCandidates Candidate[]
+}
+
+// ------------------------- Workforce -------------------------
+
+model Employee {
+  id               String         @id @default(uuid()) @db.Uuid
+  cardNumber       String         @unique
+  fullNameAr       String
+  fullNameEn       String
+  nationalId       String         @unique
+  mobile           String?
+  emergencyContact String?
+  dateOfBirth      DateTime?      @db.Date
+  hiringDate       DateTime       @db.Date
+  positionId       String?        @db.Uuid
+  position         Position?      @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  rank             String?
+  department       String?
+  sectorId         String         @db.Uuid
+  sector           Sector         @relation(fields: [sectorId], references: [id], onDelete: Restrict)
+  siteId           String         @db.Uuid
+  site             Site           @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  shiftId          String?        @db.Uuid
+  shift            Shift?         @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  salary           Decimal?       @db.Decimal(12, 2)
+  contractType     String?
+  insuranceStatus  String?
+  status           EmployeeStatus @default(ACTIVE)
+  lastWorkingDay   DateTime?      @db.Date
+  exitReason       String?
+  notes            String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  deletedAt        DateTime?
+
+  rosterAssignments RosterAssignment[]
+  attendances       Attendance[]
+  leaves            Leave[]
+  transfers         Transfer[]
+  payrollRecords    PayrollRecord[]
+  /// Set when the employee was hired through the recruitment pipeline.
+  candidateId       String?            @unique @db.Uuid
+  candidate         Candidate?         @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  documents         EmployeeDocument[]
+
+  @@index([sectorId])
+  @@index([siteId])
+  @@index([shiftId])
+  @@index([status])
+  @@index([hiringDate])
+}
+
+model Shift {
+  id            String    @id @default(uuid()) @db.Uuid
+  siteId        String    @db.Uuid
+  site          Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name          String // e.g. Morning
+  type          ShiftType @default(CUSTOM)
+  startTime     String // "08:00" — wall-clock, site-local
+  endTime       String // "16:00"
+  breakMinutes  Int       @default(0)
+  requiredStaff Int       @default(0)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  employees            Employee[]
+  rosterAssignments    RosterAssignment[]
+  attendances          Attendance[]
+  manpowerRequirements ManpowerRequirement[]
+  shortages            Shortage[]
+  transfersFrom        Transfer[]            @relation("TransferFromShift")
+  transfersTo          Transfer[]            @relation("TransferToShift")
+  contractRates        ContractRate[]
+
+  @@unique([siteId, name])
+  @@index([siteId])
+}
+
+// ------------------------- Roster -------------------------
+
+model Roster {
+  id          String       @id @default(uuid()) @db.Uuid
+  siteId      String       @db.Uuid
+  site        Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name        String
+  startDate   DateTime     @db.Date
+  endDate     DateTime     @db.Date
+  status      RosterStatus @default(DRAFT)
+  createdById String       @db.Uuid
+  createdBy   User         @relation("RosterCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  publishedAt DateTime?
+  lockedAt    DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+
+  assignments RosterAssignment[]
+
+  @@index([siteId])
+  @@index([status])
+  @@index([startDate, endDate])
+}
+
+model RosterAssignment {
+  id         String   @id @default(uuid()) @db.Uuid
+  rosterId   String   @db.Uuid
+  roster     Roster   @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  employeeId String   @db.Uuid
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shiftId    String   @db.Uuid
+  shift      Shift    @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  siteId     String   @db.Uuid
+  site       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  date       DateTime @db.Date
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([rosterId, employeeId, date, shiftId])
+  @@index([rosterId])
+  @@index([employeeId])
+  @@index([siteId, date])
+}
+
+// ------------------------- Attendance -------------------------
+
+model AttendanceCode {
+  id              String             @id @default(uuid()) @db.Uuid
+  code            AttendanceCodeEnum @unique
+  labelEn         String
+  labelAr         String
+  /// Contribution of one day marked with this code toward "Total P".
+  /// Configurable: payroll rules must never be hard-coded in app code.
+  dayValue        Decimal            @db.Decimal(4, 2)
+  countsAsPresent Boolean            @default(true)
+  isActive        Boolean            @default(true)
+  sortOrder       Int                @default(0)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  attendances Attendance[]
+}
+
+model Attendance {
+  id         String         @id @default(uuid()) @db.Uuid
+  employeeId String         @db.Uuid
+  employee   Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  siteId     String         @db.Uuid
+  site       Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  date       DateTime       @db.Date
+  codeId     String         @db.Uuid
+  code       AttendanceCode @relation(fields: [codeId], references: [id], onDelete: Restrict)
+  shiftId    String?        @db.Uuid
+  shift      Shift?         @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  notes      String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([siteId, date])
+  @@index([date])
+  @@index([codeId])
+}
+
+// ------------------------- Leave & Transfers -------------------------
+
+model Leave {
+  id         String      @id @default(uuid()) @db.Uuid
+  employeeId String      @db.Uuid
+  employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type       LeaveType
+  startDate  DateTime    @db.Date
+  endDate    DateTime    @db.Date
+  days       Int
+  status     LeaveStatus @default(PENDING)
+  approverId String?     @db.Uuid
+  approver   User?       @relation("LeaveApprover", fields: [approverId], references: [id], onDelete: SetNull)
+  notes      String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  deletedAt  DateTime?
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([startDate, endDate])
+}
+
+model Transfer {
+  id            String         @id @default(uuid()) @db.Uuid
+  employeeId    String         @db.Uuid
+  employee      Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  fromSectorId  String         @db.Uuid
+  fromSector    Sector         @relation("TransferFromSector", fields: [fromSectorId], references: [id], onDelete: Restrict)
+  fromSiteId    String         @db.Uuid
+  fromSite      Site           @relation("TransferFromSite", fields: [fromSiteId], references: [id], onDelete: Restrict)
+  fromShiftId   String?        @db.Uuid
+  fromShift     Shift?         @relation("TransferFromShift", fields: [fromShiftId], references: [id], onDelete: SetNull)
+  toSectorId    String         @db.Uuid
+  toSector      Sector         @relation("TransferToSector", fields: [toSectorId], references: [id], onDelete: Restrict)
+  toSiteId      String         @db.Uuid
+  toSite        Site           @relation("TransferToSite", fields: [toSiteId], references: [id], onDelete: Restrict)
+  toShiftId     String?        @db.Uuid
+  toShift       Shift?         @relation("TransferToShift", fields: [toShiftId], references: [id], onDelete: SetNull)
+  requesterId   String         @db.Uuid
+  requester     User           @relation("TransferRequester", fields: [requesterId], references: [id], onDelete: Restrict)
+  approverId    String?        @db.Uuid
+  approver      User?          @relation("TransferApprover", fields: [approverId], references: [id], onDelete: SetNull)
+  requestedAt   DateTime       @default(now())
+  effectiveDate DateTime       @db.Date
+  reason        String?
+  status        TransferStatus @default(PENDING)
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([effectiveDate])
+}
+
+// ------------------------- Manpower & Shortage -------------------------
+
+model ManpowerRequirement {
+  id            String    @id @default(uuid()) @db.Uuid
+  siteId        String    @db.Uuid
+  site          Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  shiftId       String?   @db.Uuid
+  shift         Shift?    @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  requiredCount Int
+  effectiveFrom DateTime  @db.Date
+  effectiveTo   DateTime? @db.Date
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([siteId])
+  @@index([shiftId])
+  @@index([effectiveFrom])
+}
+
+model ManpowerSnapshot {
+  id            String   @id @default(uuid()) @db.Uuid
+  siteId        String   @db.Uuid
+  site          Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  date          DateTime @db.Date
+  requiredCount Int
+  actualCount   Int
+  shortage      Int // requiredCount - actualCount (negative => surplus, see surplus)
+  surplus       Int      @default(0)
+  shortagePct   Decimal  @db.Decimal(5, 2)
+  createdAt     DateTime @default(now())
+
+  @@unique([siteId, date])
+  @@index([date])
+}
+
+model Shortage {
+  id           String           @id @default(uuid()) @db.Uuid
+  siteId       String           @db.Uuid
+  site         Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  shiftId      String           @db.Uuid
+  shift        Shift            @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  date         DateTime         @db.Date
+  required     Int
+  actual       Int
+  shortage     Int // required - actual; negative means surplus
+  surplus      Int              @default(0)
+  percentage   Decimal          @db.Decimal(5, 2) // shortage / required * 100
+  severity     ShortageSeverity
+  acknowledged Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@unique([siteId, shiftId, date])
+  @@index([siteId, date])
+  @@index([severity])
+}
+
+// ------------------------- Payroll -------------------------
+
+model PayrollRecord {
+  id                String    @id @default(uuid()) @db.Uuid
+  employeeId        String    @db.Uuid
+  employee          Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  periodYear        Int
+  periodMonth       Int // 1-12
+  basicSalary       Decimal   @db.Decimal(12, 2)
+  attendanceDays    Decimal   @db.Decimal(6, 2)
+  totalP            Decimal   @db.Decimal(6, 2)
+  absenceDays       Decimal   @db.Decimal(6, 2)
+  doubleAbsenceDays Int       @default(0)
+  leaveDays         Int       @default(0)
+  overtimeHours     Decimal   @default(0) @db.Decimal(6, 2)
+  deductions        Decimal   @default(0) @db.Decimal(12, 2)
+  advances          Decimal   @default(0) @db.Decimal(12, 2)
+  netPay            Decimal   @db.Decimal(12, 2)
+  status            String    @default("DRAFT")
+  computedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([employeeId, periodYear, periodMonth])
+  @@index([periodYear, periodMonth])
+}
+
+// ------------------------- Platform -------------------------
+
+model Notification {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String?   @db.Uuid // null => broadcast
+  user          User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          String // e.g. SHORTAGE_CRITICAL, LEAVE_APPROVAL
+  title         String
+  titleAr       String?
+  body          String?
+  bodyAr        String?
+  relatedModule String?
+  relatedId     String?   @db.Uuid
+  isRead        Boolean   @default(false)
+  readAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String?  @db.Uuid
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String // e.g. "employee.update"
+  module    String // e.g. "employees"
+  recordId  String?
+  oldValue  Json?
+  newValue  Json?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([module, recordId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model AIInsight {
+  id          String   @id @default(uuid()) @db.Uuid
+  type        String // e.g. SHORTAGE_PREDICTION, DAILY_SUMMARY
+  title       String
+  summary     String?
+  payload     Json // DATA -> ANALYSIS -> PREDICTION -> EXPLANATION
+  siteId      String?  @db.Uuid
+  site        Site?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  sectorId    String?  @db.Uuid
+  sector      Sector?  @relation(fields: [sectorId], references: [id], onDelete: SetNull)
+  generatedAt DateTime @default(now())
+  createdBy   String   @default("system")
+  createdAt   DateTime @default(now())
+
+  @@index([type, generatedAt])
+}
+
+// ============================================================
+// Security ERP — Phase 1: Clients / Contracts / Billing
+// ============================================================
+// New domain models for the security-company ERP, built on top of
+// the Easy Roster workforce core. Conventions match the existing
+// schema: UUID PKs, createdAt/updatedAt, Decimal(12,2) money,
+// bilingual (Ar/En) display fields, indexes on FKs + filters.
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  BLACKLISTED
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+  TERMINATED
+}
+
+enum ServiceType {
+  STATIC_GUARD
+  BODYGUARD
+  EVENT_SECURITY
+  PATROL
+  CCTV_MONITORING
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CHECK
+  ELECTRONIC
+}
+
+enum EinvoiceStatus {
+  PENDING
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+}
+
+model Client {
+  id            String       @id @default(uuid()) @db.Uuid
+  companyNameAr String
+  companyNameEn String
+  taxId         String?
+  commercialReg String?
+  address       String?
+  phone         String?
+  email         String?
+  status        ClientStatus @default(ACTIVE)
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  contacts  ClientContact[]
+  contracts Contract[]
+  invoices  Invoice[]
+
+  @@index([status])
+}
+
+model ClientContact {
+  id        String   @id @default(uuid()) @db.Uuid
+  clientId  String   @db.Uuid
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name      String
+  role      String?
+  phone     String?
+  email     String?
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId])
+}
+
+model Contract {
+  id               String         @id @default(uuid()) @db.Uuid
+  clientId         String         @db.Uuid
+  client           Client         @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  /// Business-visible contract number, assigned by the user (e.g. CNT-2026-014).
+  contractNo       String         @unique
+  titleAr          String
+  titleEn          String
+  startDate        DateTime       @db.Date
+  endDate          DateTime       @db.Date
+  status           ContractStatus @default(DRAFT)
+  /// Days after issue date before an invoice is due.
+  paymentTermsDays Int            @default(30)
+  penaltyClause    String?
+  sla              String?
+  notes            String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  sites    ContractSite[]
+  invoices Invoice[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([startDate, endDate])
+}
+
+model ContractSite {
+  id          String      @id @default(uuid()) @db.Uuid
+  contractId  String      @db.Uuid
+  contract    Contract    @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  siteId      String      @db.Uuid
+  site        Site        @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  serviceType ServiceType
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  rates        ContractRate[]
+  invoiceLines InvoiceLine[]
+
+  @@unique([contractId, siteId, serviceType])
+  @@index([contractId])
+  @@index([siteId])
+}
+
+model ContractRate {
+  id                  String       @id @default(uuid()) @db.Uuid
+  contractSiteId      String       @db.Uuid
+  contractSite        ContractSite @relation(fields: [contractSiteId], references: [id], onDelete: Cascade)
+  /// Null shiftId = rate applies to all shifts of the contract site.
+  shiftId             String?      @db.Uuid
+  shift               Shift?       @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  /// Null positionId = rate applies to all positions.
+  positionId          String?      @db.Uuid
+  position            Position?    @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  ratePerShift        Decimal      @db.Decimal(12, 2)
+  ratePerMonth        Decimal?     @db.Decimal(12, 2)
+  overtimeRatePerHour Decimal?     @db.Decimal(12, 2)
+  effectiveFrom       DateTime     @db.Date
+  effectiveTo         DateTime?    @db.Date
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@index([contractSiteId])
+  @@index([effectiveFrom, effectiveTo])
+}
+
+model Invoice {
+  id             String        @id @default(uuid()) @db.Uuid
+  /// System-generated sequence, e.g. INV-2026-0001 (see Sequence model).
+  invoiceNo      String        @unique
+  contractId     String        @db.Uuid
+  contract       Contract      @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  clientId       String        @db.Uuid
+  client         Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  periodStart    DateTime      @db.Date
+  periodEnd      DateTime      @db.Date
+  status         InvoiceStatus @default(DRAFT)
+  subtotal       Decimal       @db.Decimal(12, 2)
+  discountAmount Decimal       @default(0) @db.Decimal(12, 2)
+  taxAmount      Decimal       @default(0) @db.Decimal(12, 2)
+  total          Decimal       @db.Decimal(12, 2)
+  issuedAt       DateTime?
+  dueDate        DateTime?     @db.Date
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  lines     InvoiceLine[]
+  payments  Payment[]
+  einvoices EinvoiceSubmission[]
+
+  @@index([contractId])
+  @@index([clientId])
+  @@index([status])
+  @@index([periodStart, periodEnd])
+  @@index([dueDate])
+}
+
+model InvoiceLine {
+  id             String        @id @default(uuid()) @db.Uuid
+  invoiceId      String        @db.Uuid
+  invoice        Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  descriptionAr  String
+  descriptionEn  String
+  quantity       Decimal       @db.Decimal(10, 2)
+  unitPrice      Decimal       @db.Decimal(12, 2)
+  amount         Decimal       @db.Decimal(12, 2)
+  contractSiteId String?       @db.Uuid
+  contractSite   ContractSite? @relation(fields: [contractSiteId], references: [id], onDelete: SetNull)
+  /// Traceability hint, e.g. "attendance:2026-08" — informational only.
+  attendanceRef  String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([invoiceId])
+  @@index([contractSiteId])
+}
+
+model Payment {
+  id        String        @id @default(uuid()) @db.Uuid
+  /// System-generated sequence, e.g. PAY-2026-0001 (see Sequence model).
+  paymentNo String        @unique
+  invoiceId String        @db.Uuid
+  invoice   Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  amount    Decimal       @db.Decimal(12, 2)
+  paidAt    DateTime      @db.Date
+  method    PaymentMethod
+  reference String?
+  notes     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([invoiceId])
+  @@index([paidAt])
+}
+
+model EinvoiceSubmission {
+  id              String         @id @default(uuid()) @db.Uuid
+  invoiceId       String         @db.Uuid
+  invoice         Invoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  /// UUID returned by the Egyptian ETA portal once submitted (stub for now).
+  etaUuid         String?
+  status          EinvoiceStatus @default(PENDING)
+  submittedAt     DateTime?
+  responsePayload Json?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([invoiceId])
+  @@index([status])
+}
+
+/// Numbering sequences for system-generated document numbers
+/// (INV-2026-0001, PAY-2026-0001). Incremented inside a transaction
+/// when a document is created.
+model Sequence {
+  key       String   @id // e.g. "invoice:2026", "payment:2026"
+  lastValue Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+/// ------------------------------------------------------------------
+/// Phase 2 — Recruitment & Compliance (Security ERP)
+/// ------------------------------------------------------------------
+
+enum CandidateStatus {
+  NEW
+  SCREENING
+  INTERVIEW
+  MEDICAL_SECURITY_CHECK
+  APPROVED
+  REJECTED
+  HIRED
+}
+
+enum MilitaryStatus {
+  EXEMPT
+  POSTPONED
+  COMPLETED
+  NOT_APPLICABLE
+  PENDING
+}
+
+enum CandidateSource {
+  REFERRAL
+  WALK_IN
+  FACEBOOK_AD
+  OTHER
+}
+
+enum InterviewResult {
+  PENDING
+  PASSED
+  FAILED
+  NO_SHOW
+}
+
+enum DocumentStatus {
+  VALID
+  EXPIRING_SOON
+  EXPIRED
+  /// Never stored on a row — derived when a required document has no row.
+  MISSING
+}
+
+/// Job applicant in the recruitment pipeline. A HIRED candidate is
+/// converted into an Employee (Employee.candidateId links back).
+model Candidate {
+  id                String              @id @default(uuid()) @db.Uuid
+  nameAr            String
+  nameEn            String
+  nationalId        String              @unique
+  phone             String?
+  email             String?
+  address           String?
+  birthDate         DateTime?           @db.Date
+  gender            String?
+  militaryStatus    MilitaryStatus      @default(PENDING)
+  education         String?
+  experienceYears   Int?
+  desiredPositionId String?             @db.Uuid
+  desiredPosition   Position?           @relation(fields: [desiredPositionId], references: [id], onDelete: SetNull)
+  desiredSiteId     String?             @db.Uuid
+  desiredSite       Site?               @relation(fields: [desiredSiteId], references: [id], onDelete: SetNull)
+  source            CandidateSource     @default(WALK_IN)
+  status            CandidateStatus     @default(NEW)
+  cvUrl             String?
+  notes             String?
+  appliedAt         DateTime            @default(now())
+  hiredAt           DateTime?
+  interviews        Interview[]
+  documents         CandidateDocument[]
+  hiredEmployee     Employee?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@index([status])
+  @@index([desiredSiteId])
+  @@index([appliedAt])
+}
+
+model Interview {
+  id            String          @id @default(uuid()) @db.Uuid
+  candidateId   String          @db.Uuid
+  candidate     Candidate       @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  scheduledAt   DateTime
+  interviewerId String?         @db.Uuid
+  interviewer   User?           @relation(fields: [interviewerId], references: [id], onDelete: SetNull)
+  location      String?
+  result        InterviewResult @default(PENDING)
+  score         Int?
+  notes         String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([candidateId])
+  @@index([scheduledAt])
+}
+
+/// Document types required for security guards in Egypt
+/// (فيش جنائي، كعب عمل، رخصة مزاولة المهنة، …).
+model DocumentType {
+  id              String   @id @default(uuid()) @db.Uuid
+  code            String   @unique
+  nameAr          String
+  nameEn          String
+  /// Must be present + valid before a candidate can be hired.
+  requiredForHire Boolean  @default(false)
+  /// Months after issuedAt when the document expires (null = no expiry).
+  validityMonths  Int?
+  isRecurring     Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  candidateDocuments CandidateDocument[]
+  employeeDocuments  EmployeeDocument[]
+}
+
+/// Document collected for a candidate during recruitment.
+/// Copied to EmployeeDocument when the candidate is hired.
+model CandidateDocument {
+  id             String       @id @default(uuid()) @db.Uuid
+  candidateId    String       @db.Uuid
+  candidate      Candidate    @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  documentTypeId String       @db.Uuid
+  documentType   DocumentType @relation(fields: [documentTypeId], references: [id], onDelete: Restrict)
+  documentNo     String?
+  issuedAt       DateTime?    @db.Date
+  expiresAt      DateTime?    @db.Date
+  fileUrl        String?
+  verifiedById   String?      @db.Uuid
+  verifiedBy     User?        @relation(fields: [verifiedById], references: [id], onDelete: SetNull)
+  verifiedAt     DateTime?
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([candidateId, documentTypeId])
+  @@index([candidateId])
+}
+
+model EmployeeDocument {
+  id             String         @id @default(uuid()) @db.Uuid
+  employeeId     String         @db.Uuid
+  employee       Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  documentTypeId String         @db.Uuid
+  documentType   DocumentType   @relation(fields: [documentTypeId], references: [id], onDelete: Restrict)
+  documentNo     String?
+  issuedAt       DateTime?      @db.Date
+  expiresAt      DateTime?      @db.Date
+  /// Denormalized from expiresAt; refreshed on write and by the
+  /// compliance sweep (flagExpiringDocuments). MISSING is derived,
+  /// never stored.
+  status         DocumentStatus @default(VALID)
+  fileUrl        String?
+  verifiedById   String?        @db.Uuid
+  verifiedBy     User?          @relation(fields: [verifiedById], references: [id], onDelete: SetNull)
+  verifiedAt     DateTime?
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([employeeId, documentTypeId])
+  @@index([employeeId])
+  @@index([expiresAt])
+  @@index([status])
+}

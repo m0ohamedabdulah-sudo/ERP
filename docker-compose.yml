@@ -1,0 +1,28 @@
+# Easy Roster — local development stack (Phase 1)
+# Usage:
+#   docker compose up -d     # start Postgres
+#   docker compose down      # stop
+#   docker compose down -v   # stop + delete data volume
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: easy-roster-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-easyroster}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-easyroster}
+      POSTGRES_DB: ${POSTGRES_DB:-easy_roster}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-easyroster}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+    name: easy-roster-pgdata
