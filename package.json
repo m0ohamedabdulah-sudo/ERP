@@ -46,6 +46,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
+    "postinstall": "prisma generate",
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
