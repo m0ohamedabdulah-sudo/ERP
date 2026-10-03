@@ -11,7 +11,7 @@ import {
   shouldSkipExpiryNotification,
 } from "../../modules/compliance/compliance.rules";
 
-const D = (s: string) => new Date(`${s}T00:00:00`);
+const D = (s: string) => new Date(`${s}T00:00:00Z`);
 // "now" at 2026-09-29 12:00 — mid-day so calendar boundaries matter.
 const NOW = new Date("2026-09-29T12:00:00");
 
@@ -64,10 +64,16 @@ describe("defaultExpiresAt", () => {
   });
 
   it("adds validity months to the issue date", () => {
+    // defaultExpiresAt does calendar arithmetic in local terms, so assert on
+    // local components (not toISOString, which is UTC and shifts the day).
+    const localDay = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+        d.getDate(),
+      ).padStart(2, "0")}`;
     const out = defaultExpiresAt(D("2026-01-15"), 3);
-    expect(out?.toISOString().slice(0, 10)).toBe("2026-04-15");
+    expect(out && localDay(out)).toBe("2026-04-15");
     const year = defaultExpiresAt(D("2026-06-01"), 12);
-    expect(year?.toISOString().slice(0, 10)).toBe("2027-06-01");
+    expect(year && localDay(year)).toBe("2027-06-01");
   });
 
   it("clamps month-end days like the calendar does", () => {
