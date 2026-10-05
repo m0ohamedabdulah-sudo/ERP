@@ -2,6 +2,17 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import {
+  Icon,
+  PageHeader,
+  Card,
+  Btn,
+  Badge,
+  Field,
+  fieldInput,
+  EmptyState,
+  Spinner,
+} from "../_ui";
 
 interface Employee {
   id: string;
@@ -34,10 +45,6 @@ interface Envelope {
   meta?: { page: number; totalPages: number; total: number };
 }
 
-const inputCls =
-  "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none";
-const labelCls = "block text-sm font-medium text-slate-700";
-
 const emptyForm = {
   fullNameAr: "",
   fullNameEn: "",
@@ -47,6 +54,13 @@ const emptyForm = {
   positionId: "",
   hiringDate: new Date().toISOString().slice(0, 10),
   salary: "",
+};
+
+const STATUS_TONES: Record<string, "green" | "amber" | "red" | "slate"> = {
+  ACTIVE: "green",
+  ON_LEAVE: "amber",
+  SUSPENDED: "red",
+  TERMINATED: "slate",
 };
 
 /** Personnel list + add/edit. */
@@ -185,196 +199,213 @@ export default function EmployeesPage({
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
-        <button
-          onClick={openAdd}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-        >
-          {t("add")}
-        </button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("title")}
+        actions={
+          <Btn onClick={openAdd}>
+            <Icon name="plus" className="h-4 w-4" />
+            {t("add")}
+          </Btn>
+        }
+      />
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <input
-          value={search}
-          onChange={(e) => {
-            setSearch(e.currentTarget.value);
-            setPage(1);
-          }}
-          placeholder={t("searchPh")}
-          className="min-w-52 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-        />
-        <select
-          value={siteId}
-          onChange={(e) => {
-            setSiteId(e.currentTarget.value);
-            setPage(1);
-          }}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        >
-          <option value="">{t("allSites")}</option>
-          {sites.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.currentTarget.value);
-            setPage(1);
-          }}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        >
-          <option value="">{t("allStatuses")}</option>
-          {["ACTIVE", "ON_LEAVE", "SUSPENDED", "TERMINATED"].map((s) => (
-            <option key={s} value={s}>
-              {t(`status_${s}`)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="mt-4 overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 text-slate-500">
-              <th className="px-4 py-3 text-start font-medium">
-                {t("cardNumber")}
-              </th>
-              <th className="px-4 py-3 text-start font-medium">{t("name")}</th>
-              <th className="px-4 py-3 text-start font-medium">{t("site")}</th>
-              <th className="px-4 py-3 text-start font-medium">
-                {t("position")}
-              </th>
-              <th className="px-4 py-3 text-start font-medium">{t("mobile")}</th>
-              <th className="px-4 py-3 text-start font-medium">{t("status")}</th>
-              <th className="px-4 py-3 text-start font-medium">{t("actions")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((e) => (
-              <tr key={e.id} className="border-b border-slate-100">
-                <td className="px-4 py-3 font-mono text-xs text-slate-600">
-                  {e.cardNumber}
-                </td>
-                <td className="px-4 py-3 font-medium text-slate-900">
-                  {isAr ? e.fullNameAr : e.fullNameEn}
-                  <span className="block text-xs font-normal text-slate-500">
-                    {e.nationalId}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {e.site?.name ?? "—"}
-                </td>
-                <td className="px-4 py-3 text-slate-600">
-                  {e.position
-                    ? isAr
-                      ? e.position.titleAr
-                      : e.position.titleEn
-                    : "—"}
-                </td>
-                <td className="px-4 py-3 text-slate-600" dir="ltr">
-                  {e.mobile ?? "—"}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      e.status === "ACTIVE"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-slate-200 text-slate-600"
-                    }`}
-                  >
-                    {t(`status_${e.status}`)}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => openEdit(e)}
-                      className="text-sm font-medium text-slate-700 hover:text-slate-900"
-                    >
-                      {t("edit")}
-                    </button>
-                    <button
-                      onClick={() => remove(e)}
-                      className="text-sm font-medium text-red-600 hover:text-red-800"
-                    >
-                      {t("delete")}
-                    </button>
-                  </div>
-                </td>
-              </tr>
+      <Card className="p-4">
+        <div className="flex flex-wrap gap-2.5">
+          <div className="min-w-52 flex-1">
+            <input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.currentTarget.value);
+                setPage(1);
+              }}
+              placeholder={t("searchPh")}
+              className={fieldInput + " mt-0"}
+            />
+          </div>
+          <select
+            value={siteId}
+            onChange={(e) => {
+              setSiteId(e.currentTarget.value);
+              setPage(1);
+            }}
+            className={fieldInput + " mt-0 w-auto"}
+          >
+            <option value="">{t("allSites")}</option>
+            {sites.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
             ))}
-          </tbody>
-        </table>
-        {!loading && rows.length === 0 && (
-          <p className="px-4 py-8 text-center text-sm text-slate-500">
-            {t("noResults")}
-          </p>
+          </select>
+          <select
+            value={status}
+            onChange={(e) => {
+              setStatus(e.currentTarget.value);
+              setPage(1);
+            }}
+            className={fieldInput + " mt-0 w-auto"}
+          >
+            <option value="">{t("allStatuses")}</option>
+            {["ACTIVE", "ON_LEAVE", "SUSPENDED", "TERMINATED"].map((s) => (
+              <option key={s} value={s}>
+                {t(`status_${s}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </Card>
+
+      <Card className="overflow-hidden p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50/80 text-[13px] font-semibold text-slate-500">
+                <th className="px-4 py-3 text-start">{t("cardNumber")}</th>
+                <th className="px-4 py-3 text-start">{t("name")}</th>
+                <th className="px-4 py-3 text-start">{t("site")}</th>
+                <th className="px-4 py-3 text-start">{t("position")}</th>
+                <th className="px-4 py-3 text-start">{t("mobile")}</th>
+                <th className="px-4 py-3 text-start">{t("status")}</th>
+                <th className="px-4 py-3 text-start">{t("actions")}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((e) => (
+                <tr key={e.id} className="transition hover:bg-slate-50/70">
+                  <td className="px-4 py-3 font-mono text-xs text-slate-500">
+                    {e.cardNumber}
+                  </td>
+                  <td className="px-4 py-3 font-semibold text-slate-900">
+                    {isAr ? e.fullNameAr : e.fullNameEn}
+                    <span
+                      className="block text-xs font-normal text-slate-400"
+                      dir="ltr"
+                    >
+                      {e.nationalId}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {e.site?.name ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {e.position
+                      ? isAr
+                        ? e.position.titleAr
+                        : e.position.titleEn
+                      : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600" dir="ltr">
+                    {e.mobile ?? "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge tone={STATUS_TONES[e.status] ?? "slate"}>
+                      {t(`status_${e.status}`)}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      <Btn
+                        variant="ghost"
+                        onClick={() => openEdit(e)}
+                        className="px-2.5 py-1.5 text-[13px]"
+                      >
+                        {t("edit")}
+                      </Btn>
+                      <Btn
+                        variant="ghost"
+                        onClick={() => remove(e)}
+                        className="px-2.5 py-1.5 text-[13px] text-rose-600 hover:bg-rose-50"
+                      >
+                        {t("delete")}
+                      </Btn>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {loading && (
+          <div className="flex items-center justify-center py-12 text-slate-400">
+            <Spinner className="h-6 w-6" />
+          </div>
         )}
-      </div>
+        {!loading && rows.length === 0 && (
+          <EmptyState icon="users" title={t("noResults")} />
+        )}
+      </Card>
 
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <button
+        <div className="flex items-center justify-center gap-2">
+          <Btn
+            variant="outline"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-40"
+            className="px-3"
+            aria-label="prev"
           >
-            ‹
-          </button>
-          <span className="text-sm text-slate-600">
+            <Icon name="chevronLeft" className="h-4 w-4" />
+          </Btn>
+          <span className="text-sm font-medium tabular-nums text-slate-600">
             {page} / {totalPages}
           </span>
-          <button
+          <Btn
+            variant="outline"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-40"
+            className="px-3"
+            aria-label="next"
           >
-            ›
-          </button>
+            <Icon name="chevronRight" className="h-4 w-4" />
+          </Btn>
         </div>
       )}
 
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-[2px]">
           <form
             onSubmit={submit}
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
           >
-            <h2 className="text-lg font-bold text-slate-900">
-              {modal.editing ? t("edit") : t("add")}
-            </h2>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-extrabold tracking-tight text-slate-900">
+                  {modal.editing ? t("edit") : t("add")}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModal(null)}
+                className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="close"
+              >
+                <Icon name="x" className="h-5 w-5" />
+              </button>
+            </div>
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label className={labelCls}>
-                {t("fullNameAr")} *
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <Field label={`${t("fullNameAr")} *`}>
                 <input
                   required
                   value={form.fullNameAr}
                   onChange={(e) =>
                     setForm({ ...form, fullNameAr: e.currentTarget.value })
                   }
-                  className={inputCls}
+                  className={fieldInput}
                 />
-              </label>
-              <label className={labelCls}>
-                {t("fullNameEn")} *
+              </Field>
+              <Field label={`${t("fullNameEn")} *`}>
                 <input
                   required
                   value={form.fullNameEn}
                   onChange={(e) =>
                     setForm({ ...form, fullNameEn: e.currentTarget.value })
                   }
-                  className={inputCls}
+                  className={fieldInput}
                 />
-              </label>
-              <label className={labelCls}>
-                {t("nationalId")} *
+              </Field>
+              <Field label={`${t("nationalId")} *`}>
                 <input
                   required
                   inputMode="numeric"
@@ -384,31 +415,29 @@ export default function EmployeesPage({
                   onChange={(e) =>
                     setForm({ ...form, nationalId: e.currentTarget.value })
                   }
-                  className={inputCls}
+                  className={fieldInput}
                   dir="ltr"
                 />
-              </label>
-              <label className={labelCls}>
-                {t("mobile")}
+              </Field>
+              <Field label={t("mobile")}>
                 <input
                   inputMode="tel"
                   value={form.mobile}
                   onChange={(e) =>
                     setForm({ ...form, mobile: e.currentTarget.value })
                   }
-                  className={inputCls}
+                  className={fieldInput}
                   dir="ltr"
                 />
-              </label>
-              <label className={labelCls}>
-                {t("site")} *
+              </Field>
+              <Field label={`${t("site")} *`}>
                 <select
                   required
                   value={form.siteId}
                   onChange={(e) =>
                     setForm({ ...form, siteId: e.currentTarget.value })
                   }
-                  className={inputCls}
+                  className={fieldInput}
                 >
                   <option value="">{t("allSites")}</option>
                   {sites.map((s) => (
@@ -417,15 +446,14 @@ export default function EmployeesPage({
                     </option>
                   ))}
                 </select>
-              </label>
-              <label className={labelCls}>
-                {t("position")}
+              </Field>
+              <Field label={t("position")}>
                 <select
                   value={form.positionId}
                   onChange={(e) =>
                     setForm({ ...form, positionId: e.currentTarget.value })
                   }
-                  className={inputCls}
+                  className={fieldInput}
                 >
                   <option value="">—</option>
                   {positions.map((p) => (
@@ -434,9 +462,8 @@ export default function EmployeesPage({
                     </option>
                   ))}
                 </select>
-              </label>
-              <label className={labelCls}>
-                {t("hiringDate")} *
+              </Field>
+              <Field label={`${t("hiringDate")} *`}>
                 <input
                   type="date"
                   required
@@ -444,11 +471,10 @@ export default function EmployeesPage({
                   onChange={(e) =>
                     setForm({ ...form, hiringDate: e.currentTarget.value })
                   }
-                  className={inputCls}
+                  className={fieldInput}
                 />
-              </label>
-              <label className={labelCls}>
-                {t("salary")}
+              </Field>
+              <Field label={t("salary")}>
                 <input
                   type="number"
                   min={0}
@@ -456,33 +482,26 @@ export default function EmployeesPage({
                   onChange={(e) =>
                     setForm({ ...form, salary: e.currentTarget.value })
                   }
-                  className={inputCls}
+                  className={fieldInput}
                   dir="ltr"
                 />
-              </label>
+              </Field>
             </div>
 
             {formError && (
-              <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p className="mt-4 rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm font-medium text-rose-700">
                 {formError}
               </p>
             )}
 
             <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setModal(null)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-              >
+              <Btn variant="ghost" type="button" onClick={() => setModal(null)}>
                 {t("cancel")}
-              </button>
-              <button
-                type="submit"
-                disabled={busy}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              >
+              </Btn>
+              <Btn type="submit" disabled={busy}>
+                {busy && <Spinner className="h-4 w-4" />}
                 {t("save")}
-              </button>
+              </Btn>
             </div>
           </form>
         </div>

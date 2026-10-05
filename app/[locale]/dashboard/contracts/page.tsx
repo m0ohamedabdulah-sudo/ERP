@@ -2,6 +2,17 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import {
+  PageHeader,
+  Card,
+  Btn,
+  Badge,
+  Field,
+  fieldInput,
+  EmptyState,
+  Spinner,
+  Icon,
+} from "../_ui";
 
 interface Rate {
   id: string;
@@ -44,10 +55,6 @@ interface Envelope {
   meta?: { page: number; totalPages: number };
 }
 
-const inputCls =
-  "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none";
-const labelCls = "block text-sm font-medium text-slate-700";
-
 const TRANSITIONS: Record<string, string[]> = {
   DRAFT: ["ACTIVE", "TERMINATED"],
   ACTIVE: ["SUSPENDED", "TERMINATED"],
@@ -61,6 +68,13 @@ const TRANSITION_LABEL: Record<string, string> = {
   TERMINATED: "terminate",
 };
 const SERVICE_TYPES = ["STATIC_GUARD", "BODYGUARD", "EVENT_SECURITY", "PATROL", "CCTV_MONITORING"];
+
+function statusTone(s: string): "green" | "red" | "amber" | "slate" {
+  if (s === "ACTIVE") return "green";
+  if (s === "SUSPENDED") return "amber";
+  if (s === "TERMINATED") return "red";
+  return "slate";
+}
 
 /** Contracts list + create + detail (sites, rates, status transitions). */
 export default function ContractsPage({
@@ -90,6 +104,7 @@ export default function ContractsPage({
   const [siteForm, setSiteForm] = useState({ siteId: "", serviceType: "STATIC_GUARD", ratePerShift: "" });
   const [showSiteForm, setShowSiteForm] = useState(false);
   const isAr = locale === "ar";
+  const backIcon = isAr ? "chevronRight" : "chevronLeft";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -219,103 +234,122 @@ export default function ContractsPage({
 
   if (detail) {
     return (
-      <div>
-        <button onClick={() => { setDetail(null); }} className="text-sm font-medium text-slate-600 hover:text-slate-900">
-          ‹ {t("back")}
-        </button>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-2xl font-bold text-slate-900">
-            {detail.contractNo} — {isAr ? detail.titleAr : detail.titleEn}
-          </h1>
-          <span className={`rounded-full px-3 py-1 text-xs font-medium ${
-            detail.status === "ACTIVE" ? "bg-green-100 text-green-700"
-            : detail.status === "DRAFT" ? "bg-slate-200 text-slate-600"
-            : "bg-red-100 text-red-700"}`}>
-            {t(`status_${detail.status}`)}
-          </span>
-        </div>
+      <div className="space-y-5">
+        <Btn variant="ghost" onClick={() => { setDetail(null); }} className="px-3 py-1.5">
+          <Icon name={backIcon} className="h-4 w-4" />
+          {t("back")}
+        </Btn>
 
-        <div className="mt-4 rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-          <dl className="grid gap-3 text-sm sm:grid-cols-2">
-            <div><dt className="text-slate-500">{t("client")}</dt><dd className="font-medium">{detail.clientName}</dd></div>
-            <div><dt className="text-slate-500">{t("paymentTermsDays")}</dt><dd className="font-medium">{detail.paymentTermsDays}</dd></div>
-            <div><dt className="text-slate-500">{t("startDate")}</dt><dd className="font-medium">{fmtDate(detail.startDate)}</dd></div>
-            <div><dt className="text-slate-500">{t("endDate")}</dt><dd className="font-medium">{fmtDate(detail.endDate)}</dd></div>
+        <PageHeader
+          title={`${detail.contractNo} — ${isAr ? detail.titleAr : detail.titleEn}`}
+          actions={<Badge tone={statusTone(detail.status)}>{t(`status_${detail.status}`)}</Badge>}
+        />
+
+        <Card>
+          <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-[13px] font-medium text-slate-400">{t("client")}</dt>
+              <dd className="mt-0.5 font-semibold text-slate-900">{detail.clientName}</dd>
+            </div>
+            <div>
+              <dt className="text-[13px] font-medium text-slate-400">{t("paymentTermsDays")}</dt>
+              <dd className="mt-0.5 font-semibold text-slate-900">{detail.paymentTermsDays}</dd>
+            </div>
+            <div>
+              <dt className="text-[13px] font-medium text-slate-400">{t("startDate")}</dt>
+              <dd className="mt-0.5 font-semibold text-slate-900">{fmtDate(detail.startDate)}</dd>
+            </div>
+            <div>
+              <dt className="text-[13px] font-medium text-slate-400">{t("endDate")}</dt>
+              <dd className="mt-0.5 font-semibold text-slate-900">{fmtDate(detail.endDate)}</dd>
+            </div>
           </dl>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-5">
             {(TRANSITIONS[detail.status] ?? []).map((to) => (
-              <button key={to} disabled={busy} onClick={() => transition(to)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50 ${
-                  to === "TERMINATED" ? "bg-red-600 hover:bg-red-500" : "bg-slate-900 hover:bg-slate-700"}`}>
+              <Btn
+                key={to}
+                disabled={busy}
+                onClick={() => transition(to)}
+                variant={to === "TERMINATED" ? "danger" : "primary"}
+              >
                 {t(TRANSITION_LABEL[to] ?? to)}
-              </button>
+              </Btn>
             ))}
             {detail.status === "DRAFT" && (
-              <button onClick={remove} className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600">
+              <Btn variant="danger" onClick={remove}>
+                <Icon name="x" className="h-4 w-4" />
                 {t("delete")}
-              </button>
+              </Btn>
             )}
           </div>
-        </div>
+        </Card>
 
-        <div className="mt-6 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">{t("sites")} ({detail.siteCount})</h2>
-          <button onClick={() => setShowSiteForm((v) => !v)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-50">
-            + {t("addSite")}
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-extrabold tracking-tight text-slate-900">
+            {t("sites")} ({detail.siteCount})
+          </h2>
+          <Btn variant="outline" onClick={() => setShowSiteForm((v) => !v)} className="px-3.5 py-2">
+            <Icon name="plus" className="h-4 w-4" />
+            {t("addSite")}
+          </Btn>
         </div>
 
         {showSiteForm && (
-          <div className="mt-3 grid gap-2 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:grid-cols-4">
-            <select value={siteForm.siteId} onChange={(e) => setSiteForm({ ...siteForm, siteId: e.currentTarget.value })}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-              <option value="">{t("site")}</option>
-              {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-            <select value={siteForm.serviceType} onChange={(e) => setSiteForm({ ...siteForm, serviceType: e.currentTarget.value })}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-              {SERVICE_TYPES.map((s) => <option key={s} value={s}>{t(`service_${s}`)}</option>)}
-            </select>
-            <input type="number" min={1} placeholder={t("ratePerShift")} value={siteForm.ratePerShift} dir="ltr"
-              onChange={(e) => setSiteForm({ ...siteForm, ratePerShift: e.currentTarget.value })}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-            <button onClick={addSite} disabled={busy}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-              {t("save")}
-            </button>
-          </div>
+          <Card className="p-4">
+            <div className="grid gap-3 sm:grid-cols-4">
+              <select value={siteForm.siteId} onChange={(e) => setSiteForm({ ...siteForm, siteId: e.currentTarget.value })}
+                className={`${fieldInput} !mt-0`}>
+                <option value="">{t("site")}</option>
+                {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <select value={siteForm.serviceType} onChange={(e) => setSiteForm({ ...siteForm, serviceType: e.currentTarget.value })}
+                className={`${fieldInput} !mt-0`}>
+                {SERVICE_TYPES.map((s) => <option key={s} value={s}>{t(`service_${s}`)}</option>)}
+              </select>
+              <input type="number" min={1} placeholder={t("ratePerShift")} value={siteForm.ratePerShift} dir="ltr"
+                onChange={(e) => setSiteForm({ ...siteForm, ratePerShift: e.currentTarget.value })}
+                className={`${fieldInput} !mt-0`} />
+              <Btn onClick={addSite} disabled={busy} className="w-full sm:w-auto">
+                {busy ? <Spinner className="h-4 w-4" /> : <Icon name="check" className="h-4 w-4" />}
+                {t("save")}
+              </Btn>
+            </div>
+          </Card>
         )}
 
-        <div className="mt-3 space-y-3">
+        <div className="grid gap-4">
           {detail.sites.map((s) => (
-            <div key={s.id} className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-slate-900">{s.siteName}</h3>
+            <Card key={s.id} className="p-0">
+              <div className="flex items-center justify-between gap-3 px-5 py-4">
+                <h3 className="font-bold text-slate-900">{s.siteName}</h3>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-slate-500">{t(`service_${s.serviceType}`)}</span>
-                  <button onClick={() => removeSite(s.id)} className="text-xs font-medium text-red-600 hover:text-red-800">
+                  <Badge tone="blue">{t(`service_${s.serviceType}`)}</Badge>
+                  <button onClick={() => removeSite(s.id)} className="text-xs font-semibold text-rose-600 hover:text-rose-800">
                     {t("removeSite")}
                   </button>
                 </div>
               </div>
-              <table className="mt-2 w-full text-sm">
-                <thead><tr className="text-slate-500">
-                  <th className="py-1 text-start font-medium">{t("ratePerShift")}</th>
-                  <th className="py-1 text-start font-medium">{t("ratePerMonth")}</th>
-                  <th className="py-1 text-start font-medium">{t("effectiveFrom")}</th>
-                </tr></thead>
-                <tbody>
-                  {s.rates.map((r) => (
-                    <tr key={r.id} className="border-t border-slate-100">
-                      <td className="py-1.5" dir="ltr">{r.ratePerShift}</td>
-                      <td className="py-1.5" dir="ltr">{r.ratePerMonth ?? "—"}</td>
-                      <td className="py-1.5">{r.effectiveFrom.slice(0, 10)}</td>
+              <div className="overflow-x-auto border-t border-slate-100">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs uppercase tracking-wider text-slate-400">
+                      <th className="px-5 py-2.5 text-start font-semibold">{t("ratePerShift")}</th>
+                      <th className="px-5 py-2.5 text-start font-semibold">{t("ratePerMonth")}</th>
+                      <th className="px-5 py-2.5 text-start font-semibold">{t("effectiveFrom")}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {s.rates.map((r) => (
+                      <tr key={r.id}>
+                        <td className="px-5 py-2.5 font-semibold tabular-nums text-slate-900" dir="ltr">{r.ratePerShift}</td>
+                        <td className="px-5 py-2.5 tabular-nums text-slate-600" dir="ltr">{r.ratePerMonth ?? "—"}</td>
+                        <td className="px-5 py-2.5 text-slate-600">{r.effectiveFrom.slice(0, 10)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           ))}
         </div>
       </div>
@@ -323,137 +357,150 @@ export default function ContractsPage({
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
-        <button onClick={() => { setShowAdd(true); setFormError(null); }}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">
-          {t("add")}
-        </button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("title")}
+        actions={
+          <Btn onClick={() => { setShowAdd(true); setFormError(null); }}>
+            <Icon name="plus" className="h-4 w-4" />
+            {t("add")}
+          </Btn>
+        }
+      />
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <input value={search} onChange={(e) => { setSearch(e.currentTarget.value); setPage(1); }}
-          placeholder={t("searchPh")}
-          className="min-w-52 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none" />
-        <select value={status} onChange={(e) => { setStatus(e.currentTarget.value); setPage(1); }}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-          <option value="">{t("allStatuses")}</option>
-          {["DRAFT", "ACTIVE", "SUSPENDED", "EXPIRED", "TERMINATED"].map((s) => (
-            <option key={s} value={s}>{t(`status_${s}`)}</option>
-          ))}
-        </select>
-        <select value={clientId} onChange={(e) => { setClientId(e.currentTarget.value); setPage(1); }}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-          <option value="">{t("allClients")}</option>
-          {clients.map((c) => (
-            <option key={c.id} value={c.id}>{isAr ? c.companyNameAr : c.companyNameEn}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="mt-4 overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-        <table className="w-full text-sm">
-          <thead><tr className="border-b border-slate-200 text-slate-500">
-            <th className="px-4 py-3 text-start font-medium">{t("contractNo")}</th>
-            <th className="px-4 py-3 text-start font-medium">{t("client")}</th>
-            <th className="px-4 py-3 text-start font-medium">{t("endDate")}</th>
-            <th className="px-4 py-3 text-start font-medium">{t("status")}</th>
-            <th className="px-4 py-3 text-start font-medium">{t("actions")}</th>
-          </tr></thead>
-          <tbody>
-            {rows.map((c) => (
-              <tr key={c.id} className="border-b border-slate-100">
-                <td className="px-4 py-3 font-mono text-xs">{c.contractNo}</td>
-                <td className="px-4 py-3 font-medium text-slate-900">{c.clientName}</td>
-                <td className="px-4 py-3 text-slate-600">{fmtDate(c.endDate)}</td>
-                <td className="px-4 py-3">
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    c.status === "ACTIVE" ? "bg-green-100 text-green-700"
-                    : c.status === "DRAFT" ? "bg-slate-200 text-slate-600"
-                    : "bg-red-100 text-red-700"}`}>
-                    {t(`status_${c.status}`)}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <button onClick={() => refreshDetail(c.id)}
-                    className="text-sm font-medium text-slate-700 hover:text-slate-900">
-                    {t("details")}
-                  </button>
-                </td>
-              </tr>
+      <Card className="p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <input value={search} onChange={(e) => { setSearch(e.currentTarget.value); setPage(1); }}
+            placeholder={t("searchPh")}
+            className={`${fieldInput} !mt-0 min-w-52 flex-1`} />
+          <select value={status} onChange={(e) => { setStatus(e.currentTarget.value); setPage(1); }}
+            className={`${fieldInput} !mt-0 w-auto`}>
+            <option value="">{t("allStatuses")}</option>
+            {["DRAFT", "ACTIVE", "SUSPENDED", "EXPIRED", "TERMINATED"].map((s) => (
+              <option key={s} value={s}>{t(`status_${s}`)}</option>
             ))}
-          </tbody>
-        </table>
-        {!loading && rows.length === 0 && (
-          <p className="px-4 py-8 text-center text-sm text-slate-500">{t("noResults")}</p>
+          </select>
+          <select value={clientId} onChange={(e) => { setClientId(e.currentTarget.value); setPage(1); }}
+            className={`${fieldInput} !mt-0 w-auto`}>
+            <option value="">{t("allClients")}</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>{isAr ? c.companyNameAr : c.companyNameEn}</option>
+            ))}
+          </select>
+        </div>
+      </Card>
+
+      <Card className="overflow-hidden p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50/70 text-xs uppercase tracking-wider text-slate-400">
+                <th className="px-5 py-3.5 text-start font-semibold">{t("contractNo")}</th>
+                <th className="px-5 py-3.5 text-start font-semibold">{t("client")}</th>
+                <th className="px-5 py-3.5 text-start font-semibold">{t("endDate")}</th>
+                <th className="px-5 py-3.5 text-start font-semibold">{t("status")}</th>
+                <th className="px-5 py-3.5 text-end font-semibold">{t("actions")}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((c) => (
+                <tr key={c.id} className="transition hover:bg-slate-50/70">
+                  <td className="px-5 py-3.5 font-mono text-xs font-semibold text-slate-900">{c.contractNo}</td>
+                  <td className="px-5 py-3.5 font-semibold text-slate-900">{c.clientName}</td>
+                  <td className="px-5 py-3.5 text-slate-600">{fmtDate(c.endDate)}</td>
+                  <td className="px-5 py-3.5">
+                    <Badge tone={statusTone(c.status)}>{t(`status_${c.status}`)}</Badge>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <div className="flex justify-end">
+                      <Btn variant="ghost" onClick={() => refreshDetail(c.id)} className="px-3 py-1.5">
+                        {t("details")}
+                      </Btn>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {loading ? (
+          <div className="flex justify-center py-12 text-slate-400">
+            <Spinner className="h-7 w-7" />
+          </div>
+        ) : (
+          rows.length === 0 && (
+            <EmptyState icon="contracts" title={t("noResults")} />
+          )
         )}
-      </div>
+      </Card>
 
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-40">‹</button>
-          <span className="text-sm text-slate-600">{page} / {totalPages}</span>
-          <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-40">›</button>
+        <div className="flex items-center justify-center gap-2">
+          <Btn variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="px-3 py-1.5">
+            <Icon name="chevronLeft" className="h-4 w-4" />
+          </Btn>
+          <span className="text-sm font-medium text-slate-600">{page} / {totalPages}</span>
+          <Btn variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="px-3 py-1.5">
+            <Icon name="chevronRight" className="h-4 w-4" />
+          </Btn>
         </div>
       )}
 
       {showAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={create} className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">{t("add")}</h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label className={labelCls}>{t("client")} *
-                <select required value={form.clientId} onChange={(e) => setForm({ ...form, clientId: e.currentTarget.value })} className={inputCls}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]">
+          <form onSubmit={create} className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="text-lg font-extrabold tracking-tight text-slate-900">{t("add")}</h2>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <Field label={`${t("client")} *`}>
+                <select required value={form.clientId} onChange={(e) => setForm({ ...form, clientId: e.currentTarget.value })} className={fieldInput}>
                   <option value="">{t("allClients")}</option>
                   {clients.map((c) => <option key={c.id} value={c.id}>{isAr ? c.companyNameAr : c.companyNameEn}</option>)}
                 </select>
-              </label>
-              <label className={labelCls}>{t("contractNo")} *
-                <input required value={form.contractNo} onChange={(e) => setForm({ ...form, contractNo: e.currentTarget.value })} className={inputCls} dir="ltr" />
-              </label>
-              <label className={labelCls}>{t("titleAr")} *
-                <input required value={form.titleAr} onChange={(e) => setForm({ ...form, titleAr: e.currentTarget.value })} className={inputCls} />
-              </label>
-              <label className={labelCls}>{t("titleEn")} *
-                <input required value={form.titleEn} onChange={(e) => setForm({ ...form, titleEn: e.currentTarget.value })} className={inputCls} />
-              </label>
-              <label className={labelCls}>{t("startDate")} *
-                <input type="date" required value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.currentTarget.value })} className={inputCls} />
-              </label>
-              <label className={labelCls}>{t("endDate")} *
-                <input type="date" required value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.currentTarget.value })} className={inputCls} />
-              </label>
-              <label className={labelCls}>{t("paymentTermsDays")}
+              </Field>
+              <Field label={`${t("contractNo")} *`}>
+                <input required value={form.contractNo} onChange={(e) => setForm({ ...form, contractNo: e.currentTarget.value })} className={fieldInput} dir="ltr" />
+              </Field>
+              <Field label={`${t("titleAr")} *`}>
+                <input required value={form.titleAr} onChange={(e) => setForm({ ...form, titleAr: e.currentTarget.value })} className={fieldInput} />
+              </Field>
+              <Field label={`${t("titleEn")} *`}>
+                <input required value={form.titleEn} onChange={(e) => setForm({ ...form, titleEn: e.currentTarget.value })} className={fieldInput} />
+              </Field>
+              <Field label={`${t("startDate")} *`}>
+                <input type="date" required value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.currentTarget.value })} className={fieldInput} />
+              </Field>
+              <Field label={`${t("endDate")} *`}>
+                <input type="date" required value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.currentTarget.value })} className={fieldInput} />
+              </Field>
+              <Field label={t("paymentTermsDays")}>
                 <input type="number" min={0} value={form.paymentTermsDays} dir="ltr"
-                  onChange={(e) => setForm({ ...form, paymentTermsDays: e.currentTarget.value })} className={inputCls} />
-              </label>
-              <label className={labelCls}>{t("site")} *
-                <select required value={form.siteId} onChange={(e) => setForm({ ...form, siteId: e.currentTarget.value })} className={inputCls}>
+                  onChange={(e) => setForm({ ...form, paymentTermsDays: e.currentTarget.value })} className={fieldInput} />
+              </Field>
+              <Field label={`${t("site")} *`}>
+                <select required value={form.siteId} onChange={(e) => setForm({ ...form, siteId: e.currentTarget.value })} className={fieldInput}>
                   <option value="">{t("site")}</option>
                   {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
-              </label>
-              <label className={labelCls}>{t("serviceType")}
-                <select value={form.serviceType} onChange={(e) => setForm({ ...form, serviceType: e.currentTarget.value })} className={inputCls}>
+              </Field>
+              <Field label={t("serviceType")}>
+                <select value={form.serviceType} onChange={(e) => setForm({ ...form, serviceType: e.currentTarget.value })} className={fieldInput}>
                   {SERVICE_TYPES.map((s) => <option key={s} value={s}>{t(`service_${s}`)}</option>)}
                 </select>
-              </label>
-              <label className={labelCls}>{t("ratePerShift")} *
+              </Field>
+              <Field label={`${t("ratePerShift")} *`}>
                 <input type="number" min={1} required value={form.ratePerShift} dir="ltr"
-                  onChange={(e) => setForm({ ...form, ratePerShift: e.currentTarget.value })} className={inputCls} />
-              </label>
+                  onChange={(e) => setForm({ ...form, ratePerShift: e.currentTarget.value })} className={fieldInput} />
+              </Field>
             </div>
             {formError && (
-              <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>
+              <p className="mt-4 rounded-xl bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700 ring-1 ring-rose-100">{formError}</p>
             )}
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowAdd(false)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium">{t("cancel")}</button>
-              <button type="submit" disabled={busy}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{t("save")}</button>
+              <Btn type="button" variant="ghost" onClick={() => setShowAdd(false)}>{t("cancel")}</Btn>
+              <Btn type="submit" disabled={busy}>
+                {busy ? <Spinner className="h-4 w-4" /> : <Icon name="check" className="h-4 w-4" />}
+                {t("save")}
+              </Btn>
             </div>
           </form>
         </div>

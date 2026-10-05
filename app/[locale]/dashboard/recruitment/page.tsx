@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import {
+  PageHeader, Card, Btn, Badge, Field, fieldInput, EmptyState, Icon,
+} from "../_ui";
+
+type BadgeTone = "green" | "red" | "amber" | "blue" | "slate" | "purple";
 
 interface Envelope { success: boolean; data?: unknown; error?: { message?: string }; page?: { total: number; totalPages: number } }
 interface Interview { id: string; scheduledAt: string; location: string | null; notes: string | null }
@@ -11,18 +16,15 @@ interface Candidate {
 }
 interface SiteOpt { id: string; name: string }
 
-const inputCls = "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none";
-const labelCls = "block text-sm font-medium text-slate-700";
-
 const STATUSES = ["NEW", "SCREENING", "INTERVIEW", "MEDICAL_SECURITY_CHECK", "APPROVED", "REJECTED", "HIRED"];
-const STATUS_COLORS: Record<string, string> = {
-  NEW: "bg-slate-200 text-slate-600",
-  SCREENING: "bg-blue-100 text-blue-700",
-  INTERVIEW: "bg-purple-100 text-purple-700",
-  MEDICAL_SECURITY_CHECK: "bg-amber-100 text-amber-700",
-  APPROVED: "bg-green-100 text-green-700",
-  REJECTED: "bg-red-100 text-red-700",
-  HIRED: "bg-emerald-100 text-emerald-700",
+const STATUS_TONES: Record<string, BadgeTone> = {
+  NEW: "slate",
+  SCREENING: "blue",
+  INTERVIEW: "purple",
+  MEDICAL_SECURITY_CHECK: "amber",
+  APPROVED: "green",
+  REJECTED: "red",
+  HIRED: "green",
 };
 
 /** Recruitment pipeline: candidates, interviews, hire. */
@@ -164,109 +166,134 @@ export default function RecruitmentPage() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
-        <button onClick={() => setShowAdd(true)}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">{t("addCandidate")}</button>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("title")}
+        actions={
+          <Btn variant="primary" onClick={() => setShowAdd(true)}>
+            <Icon name="plus" className="h-4 w-4" />{t("addCandidate")}
+          </Btn>
+        }
+      />
+
+      <div className="flex flex-wrap gap-2">
+        {pipeline.map((p) => {
+          const active = status === p.status;
+          return (
+            <button key={p.status} onClick={() => { setStatus(p.status); setPage(1); }}
+              className={`flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition ${
+                active
+                  ? "border-slate-900 bg-slate-900 text-white shadow"
+                  : "border-slate-200/70 bg-white text-slate-700 hover:border-slate-300"
+              }`}>
+              <span className={`text-lg font-extrabold tabular-nums ${active ? "text-white" : "text-slate-900"}`}>{p.count}</span>
+              <span className={active ? "text-slate-200" : "text-slate-500"}>{t(`st_${p.status}`)}</span>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {pipeline.map((p) => (
-          <button key={p.status} onClick={() => { setStatus(p.status); setPage(1); }}
-            className={`rounded-xl px-4 py-2.5 text-sm ring-1 ${status === p.status ? "bg-slate-900 text-white ring-slate-900" : "bg-white text-slate-700 ring-slate-200"}`}>
-            <span className="font-bold">{p.count}</span> <span className="ms-1">{t(`st_${p.status}`)}</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-end gap-2">
-        <label className={labelCls}>{t("search")}
+      <Card className="flex flex-wrap items-end gap-3">
+        <Field label={t("search")}>
           <input value={search} onChange={(e) => { setSearch(e.currentTarget.value); setPage(1); }}
-            className="mt-1 block w-56 rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
-        <label className={labelCls}>{t("status")}
+            className={`${fieldInput} w-56`} />
+        </Field>
+        <Field label={t("status")}>
           <select value={status} onChange={(e) => { setStatus(e.currentTarget.value); setPage(1); }}
-            className="mt-1 block rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal">
+            className={`${fieldInput} min-w-40`}>
             <option value="">{t("allStatuses")}</option>
             {STATUSES.map((s) => <option key={s} value={s}>{t(`st_${s}`)}</option>)}
-          </select></label>
+          </select>
+        </Field>
+      </Card>
+
+      {msg && (
+        <div className="flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700 ring-1 ring-inset ring-rose-200">
+          <Icon name="x" className="h-4 w-4 shrink-0" />{msg}
+        </div>
+      )}
+
+      <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.05)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-slate-100 bg-slate-50/60 text-slate-500">
+              <th className="px-4 py-3 text-start font-semibold">{t("nameAr")}</th>
+              <th className="px-4 py-3 text-start font-semibold">{t("nationalId")}</th>
+              <th className="px-4 py-3 text-start font-semibold">{t("phone")}</th>
+              <th className="px-4 py-3 text-center font-semibold">{t("status")}</th>
+              <th className="px-4 py-3 text-center font-semibold">{t("appliedAt")}</th>
+            </tr></thead>
+            <tbody>
+              {candidates.map((c) => (
+                <tr key={c.id} className="cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-50/60" onClick={() => openCandidate(c.id)}>
+                  <td className="px-4 py-2.5 font-semibold text-slate-900">
+                    {c.nameAr}
+                    <span className="block text-xs font-normal text-slate-500" dir="ltr">{c.nameEn}</span>
+                  </td>
+                  <td className="px-4 py-2.5 font-mono text-xs" dir="ltr">{c.nationalId}</td>
+                  <td className="px-4 py-2.5" dir="ltr">{c.phone ?? "—"}</td>
+                  <td className="px-4 py-2.5 text-center">
+                    <Badge tone={STATUS_TONES[c.status] ?? "slate"}>{t(`st_${c.status}`)}</Badge>
+                  </td>
+                  <td className="px-4 py-2.5 text-center text-xs text-slate-500" dir="ltr">{c.appliedAt.slice(0, 10)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {candidates.length === 0 && <EmptyState icon="recruitment" title={t("noCandidates")} />}
       </div>
 
-      {msg && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{msg}</p>}
-
-      <div className="mt-4 overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-        <table className="w-full text-sm">
-          <thead><tr className="border-b border-slate-200 text-slate-500">
-            <th className="px-4 py-3 text-start font-medium">{t("nameAr")}</th>
-            <th className="px-4 py-3 text-start font-medium">{t("nationalId")}</th>
-            <th className="px-4 py-3 text-start font-medium">{t("phone")}</th>
-            <th className="px-4 py-3 text-center font-medium">{t("status")}</th>
-            <th className="px-4 py-3 text-center font-medium">{t("appliedAt")}</th>
-          </tr></thead>
-          <tbody>
-            {candidates.map((c) => (
-              <tr key={c.id} className="cursor-pointer border-b border-slate-100 hover:bg-slate-50" onClick={() => openCandidate(c.id)}>
-                <td className="px-4 py-2.5 font-medium text-slate-900">{c.nameAr}
-                  <span className="block text-xs font-normal text-slate-500" dir="ltr">{c.nameEn}</span></td>
-                <td className="px-4 py-2.5 font-mono text-xs" dir="ltr">{c.nationalId}</td>
-                <td className="px-4 py-2.5" dir="ltr">{c.phone ?? "—"}</td>
-                <td className="px-4 py-2.5 text-center">
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[c.status] ?? ""}`}>{t(`st_${c.status}`)}</span></td>
-                <td className="px-4 py-2.5 text-center text-xs text-slate-500" dir="ltr">{c.appliedAt.slice(0, 10)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {candidates.length === 0 && <p className="px-4 py-8 text-center text-sm text-slate-500">{t("noCandidates")}</p>}
-      </div>
-
-      <div className="mt-3 flex items-center justify-between text-sm text-slate-500">
-        <span>—</span>
-        <div className="flex gap-2">
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-40">‹</button>
-          <span className="px-2 py-1.5" dir="ltr">{page} / {totalPages}</span>
-          <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-40">›</button>
+      <div className="flex items-center justify-end">
+        <div className="flex items-center gap-2">
+          <Btn variant="ghost" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="!px-3">
+            <Icon name="chevronLeft" className="h-4 w-4 rtl:rotate-180" />
+          </Btn>
+          <span className="px-2 text-sm tabular-nums text-slate-500" dir="ltr">{page} / {totalPages}</span>
+          <Btn variant="ghost" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="!px-3">
+            <Icon name="chevronRight" className="h-4 w-4 rtl:rotate-180" />
+          </Btn>
         </div>
       </div>
 
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">{selected.nameAr}</h2>
-                <p className="text-sm text-slate-500" dir="ltr">{selected.nameEn} · {selected.nationalId}</p>
+                <h2 className="text-lg font-extrabold tracking-tight text-slate-900">{selected.nameAr}</h2>
+                <p className="mt-0.5 text-sm text-slate-500" dir="ltr">{selected.nameEn} · {selected.nationalId}</p>
               </div>
-              <button onClick={() => setSelected(null)} className="text-xl text-slate-400">×</button>
+              <Btn variant="ghost" onClick={() => setSelected(null)} className="!px-2.5">
+                <Icon name="x" className="h-4 w-4" />
+              </Btn>
             </div>
-            <div className="mt-2">
-              <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[selected.status] ?? ""}`}>
-                {t(`st_${selected.status}`)}</span>
+            <div className="mt-3">
+              <Badge tone={STATUS_TONES[selected.status] ?? "slate"}>{t(`st_${selected.status}`)}</Badge>
             </div>
 
-            <div className="mt-4">
-              <h3 className="text-sm font-semibold text-slate-900">{t("moveTo")}</h3>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <div className="mt-5">
+              <h3 className="text-sm font-bold text-slate-900">{t("moveTo")}</h3>
+              <div className="mt-2 flex flex-wrap gap-1.5">
                 {STATUSES.filter((s) => s !== selected.status && s !== "HIRED").map((s) => (
-                  <button key={s} onClick={() => transition(s)}
-                    className="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-medium hover:bg-slate-50">
-                    {t(`st_${s}`)}</button>
+                  <Btn key={s} variant="outline" onClick={() => transition(s)} className="!px-2.5 !py-1.5 !text-xs">
+                    {t(`st_${s}`)}
+                  </Btn>
                 ))}
               </div>
             </div>
 
-            <div className="mt-4">
+            <div className="mt-5">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-900">{t("interviews")} ({selected.interviews.length})</h3>
-                <button onClick={() => setShowInterview(true)}
-                  className="text-xs font-medium text-blue-700">{t("scheduleInterview")}</button>
+                <h3 className="text-sm font-bold text-slate-900">{t("interviews")} ({selected.interviews.length})</h3>
+                <Btn variant="ghost" onClick={() => setShowInterview(true)} className="!px-2 !py-1 !text-xs !text-blue-700">
+                  <Icon name="plus" className="h-3.5 w-3.5" />{t("scheduleInterview")}
+                </Btn>
               </div>
-              <ul className="mt-1.5 space-y-1">
+              <ul className="mt-2 space-y-1.5">
                 {selected.interviews.map((i) => (
-                  <li key={i.id} className="rounded-lg bg-slate-50 px-3 py-2 text-xs">
-                    <span dir="ltr">{i.scheduledAt.slice(0, 16).replace("T", " ")}</span>
+                  <li key={i.id} className="rounded-xl bg-slate-50 px-3.5 py-2.5 text-xs text-slate-600">
+                    <span className="font-semibold text-slate-800" dir="ltr">{i.scheduledAt.slice(0, 16).replace("T", " ")}</span>
                     {i.location && <span className="ms-2 text-slate-500">{i.location}</span>}
                   </li>
                 ))}
@@ -274,12 +301,13 @@ export default function RecruitmentPage() {
             </div>
 
             {selected.status === "APPROVED" && (
-              <button onClick={() => setShowHire(true)}
-                className="mt-5 w-full rounded-lg bg-green-700 px-4 py-2.5 text-sm font-medium text-white">
-                {t("hire")}</button>
+              <Btn variant="success" onClick={() => setShowHire(true)} className="mt-6 w-full">
+                {t("hire")}
+              </Btn>
             )}
-            <button onClick={() => setSelected(null)}
-              className="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium">{t("cancel")}</button>
+            <Btn variant="outline" onClick={() => setSelected(null)} className="mt-2 w-full">
+              {t("cancel")}
+            </Btn>
           </div>
         </div>
       )}
@@ -287,27 +315,31 @@ export default function RecruitmentPage() {
       {showAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form onSubmit={addCandidate} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">{t("addCandidate")}</h2>
+            <h2 className="text-lg font-extrabold tracking-tight text-slate-900">{t("addCandidate")}</h2>
             <div className="mt-4 grid gap-4">
-              <label className={labelCls}>{t("nameAr")}
-                <input required value={form.nameAr} onChange={(e) => setForm({ ...form, nameAr: e.currentTarget.value })} className={inputCls} /></label>
-              <label className={labelCls}>{t("nameEn")}
-                <input required value={form.nameEn} dir="ltr" onChange={(e) => setForm({ ...form, nameEn: e.currentTarget.value })} className={inputCls} /></label>
+              <Field label={t("nameAr")}>
+                <input required value={form.nameAr} onChange={(e) => setForm({ ...form, nameAr: e.currentTarget.value })} className={fieldInput} />
+              </Field>
+              <Field label={t("nameEn")}>
+                <input required value={form.nameEn} dir="ltr" onChange={(e) => setForm({ ...form, nameEn: e.currentTarget.value })} className={fieldInput} />
+              </Field>
               <div className="grid grid-cols-2 gap-4">
-                <label className={labelCls}>{t("nationalId")}
+                <Field label={t("nationalId")}>
                   <input required value={form.nationalId} dir="ltr" maxLength={14}
-                    onChange={(e) => setForm({ ...form, nationalId: e.currentTarget.value.replace(/\D/g, "") })} className={inputCls} /></label>
-                <label className={labelCls}>{t("phone")}
+                    onChange={(e) => setForm({ ...form, nationalId: e.currentTarget.value.replace(/\D/g, "") })} className={fieldInput} />
+                </Field>
+                <Field label={t("phone")}>
                   <input value={form.phone} dir="ltr" maxLength={11}
-                    onChange={(e) => setForm({ ...form, phone: e.currentTarget.value.replace(/\D/g, "") })} className={inputCls} /></label>
+                    onChange={(e) => setForm({ ...form, phone: e.currentTarget.value.replace(/\D/g, "") })} className={fieldInput} />
+                </Field>
               </div>
-              <label className={labelCls}>{t("notes")}
-                <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.currentTarget.value })} className={inputCls} /></label>
+              <Field label={t("notes")}>
+                <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.currentTarget.value })} className={fieldInput} />
+              </Field>
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowAdd(false)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium">{t("cancel")}</button>
-              <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">{t("save")}</button>
+              <Btn variant="outline" type="button" onClick={() => setShowAdd(false)}>{t("cancel")}</Btn>
+              <Btn variant="primary" type="submit">{t("save")}</Btn>
             </div>
           </form>
         </div>
@@ -316,20 +348,22 @@ export default function RecruitmentPage() {
       {showInterview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form onSubmit={schedule} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">{t("scheduleInterview")}</h2>
+            <h2 className="text-lg font-extrabold tracking-tight text-slate-900">{t("scheduleInterview")}</h2>
             <div className="mt-4 grid gap-4">
-              <label className={labelCls}>{t("scheduledAt")}
+              <Field label={t("scheduledAt")}>
                 <input required type="datetime-local" value={intForm.scheduledAt} dir="ltr"
-                  onChange={(e) => setIntForm({ ...intForm, scheduledAt: e.currentTarget.value })} className={inputCls} /></label>
-              <label className={labelCls}>{t("location")}
-                <input value={intForm.location} onChange={(e) => setIntForm({ ...intForm, location: e.currentTarget.value })} className={inputCls} /></label>
-              <label className={labelCls}>{t("notes")}
-                <input value={intForm.notes} onChange={(e) => setIntForm({ ...intForm, notes: e.currentTarget.value })} className={inputCls} /></label>
+                  onChange={(e) => setIntForm({ ...intForm, scheduledAt: e.currentTarget.value })} className={fieldInput} />
+              </Field>
+              <Field label={t("location")}>
+                <input value={intForm.location} onChange={(e) => setIntForm({ ...intForm, location: e.currentTarget.value })} className={fieldInput} />
+              </Field>
+              <Field label={t("notes")}>
+                <input value={intForm.notes} onChange={(e) => setIntForm({ ...intForm, notes: e.currentTarget.value })} className={fieldInput} />
+              </Field>
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowInterview(false)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium">{t("cancel")}</button>
-              <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">{t("save")}</button>
+              <Btn variant="outline" type="button" onClick={() => setShowInterview(false)}>{t("cancel")}</Btn>
+              <Btn variant="primary" type="submit">{t("save")}</Btn>
             </div>
           </form>
         </div>
@@ -338,21 +372,22 @@ export default function RecruitmentPage() {
       {showHire && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form onSubmit={hire} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">{t("hire")}</h2>
+            <h2 className="text-lg font-extrabold tracking-tight text-slate-900">{t("hire")}</h2>
             <div className="mt-4 grid gap-4">
-              <label className={labelCls}>{t("hireSiteOptional")}
-                <select value={hireForm.siteId} onChange={(e) => setHireForm({ ...hireForm, siteId: e.currentTarget.value })} className={inputCls}>
+              <Field label={t("hireSiteOptional")}>
+                <select value={hireForm.siteId} onChange={(e) => setHireForm({ ...hireForm, siteId: e.currentTarget.value })} className={fieldInput}>
                   <option value="">—</option>
                   {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select></label>
-              <label className={labelCls}>{t("salary")}
+                </select>
+              </Field>
+              <Field label={t("salary")}>
                 <input type="number" min="0" value={hireForm.salary} dir="ltr"
-                  onChange={(e) => setHireForm({ ...hireForm, salary: e.currentTarget.value })} className={inputCls} /></label>
+                  onChange={(e) => setHireForm({ ...hireForm, salary: e.currentTarget.value })} className={fieldInput} />
+              </Field>
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowHire(false)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium">{t("cancel")}</button>
-              <button type="submit" className="rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white">{t("hire")}</button>
+              <Btn variant="outline" type="button" onClick={() => setShowHire(false)}>{t("cancel")}</Btn>
+              <Btn variant="success" type="submit">{t("hire")}</Btn>
             </div>
           </form>
         </div>

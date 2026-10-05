@@ -2,6 +2,17 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import {
+  Icon,
+  PageHeader,
+  Card,
+  Btn,
+  Badge,
+  Field,
+  fieldInput,
+  EmptyState,
+  Spinner,
+} from "../_ui";
 
 interface Site {
   id: string;
@@ -26,10 +37,6 @@ interface Envelope {
   error?: { code?: string; message?: string };
   meta?: { page: number; totalPages: number };
 }
-
-const inputCls =
-  "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none";
-const labelCls = "block text-sm font-medium text-slate-700";
 
 const emptyForm = {
   name: "",
@@ -198,162 +205,220 @@ export default function SitesPage() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
-        <button
-          onClick={openAdd}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-        >
-          {t("add")}
-        </button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("title")}
+        actions={
+          <Btn onClick={openAdd}>
+            <Icon name="plus" className="h-4 w-4" />
+            {t("add")}
+          </Btn>
+        }
+      />
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <input
-          value={search}
-          onChange={(e) => {
-            setSearch(e.currentTarget.value);
-            setPage(1);
-          }}
-          placeholder={t("searchPh")}
-          className="min-w-52 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-        />
-        <select
-          value={sectorId}
-          onChange={(e) => {
-            setSectorId(e.currentTarget.value);
-            setPage(1);
-          }}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        >
-          <option value="">{t("allSectors")}</option>
-          {sectors.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {rows.map((s) => (
-          <div
-            key={s.id}
-            className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="font-semibold text-slate-900">{s.name}</h3>
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                  s.isActive
-                    ? "bg-green-100 text-green-700"
-                    : "bg-slate-200 text-slate-600"
-                }`}
-              >
-                {s.sector?.name ?? ""}
-              </span>
-            </div>
-            <dl className="mt-3 space-y-1 text-sm text-slate-600">
-              <div className="flex justify-between">
-                <dt>{t("requiredManpower")}</dt>
-                <dd className="font-medium text-slate-900">
-                  {s.requiredManpower}
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt>{t("staff")}</dt>
-                <dd className="font-medium text-slate-900">
-                  {s.employeesCount}
-                </dd>
-              </div>
-              {s.contactName && (
-                <div className="flex justify-between">
-                  <dt>{t("contactName")}</dt>
-                  <dd>{s.contactName}</dd>
-                </div>
-              )}
-              {s.location && (
-                <div className="flex justify-between">
-                  <dt>{t("location")}</dt>
-                  <dd className="text-end">{s.location}</dd>
-                </div>
-              )}
-            </dl>
-            <div className="mt-4 flex gap-3 border-t border-slate-100 pt-3">
-              <button
-                onClick={() => openEdit(s)}
-                className="text-sm font-medium text-slate-700 hover:text-slate-900"
-              >
-                {t("edit")}
-              </button>
-              <button
-                onClick={() => remove(s)}
-                className="text-sm font-medium text-red-600 hover:text-red-800"
-              >
-                {t("delete")}
-              </button>
-            </div>
+      <Card className="p-4">
+        <div className="flex flex-wrap gap-2.5">
+          <div className="min-w-52 flex-1">
+            <input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.currentTarget.value);
+                setPage(1);
+              }}
+              placeholder={t("searchPh")}
+              className={fieldInput + " mt-0"}
+            />
           </div>
-        ))}
-      </div>
-      {!loading && rows.length === 0 && (
-        <p className="mt-8 text-center text-sm text-slate-500">{t("noResults")}</p>
+          <select
+            value={sectorId}
+            onChange={(e) => {
+              setSectorId(e.currentTarget.value);
+              setPage(1);
+            }}
+            className={fieldInput + " mt-0 w-auto"}
+          >
+            <option value="">{t("allSectors")}</option>
+            {sectors.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </Card>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-slate-400">
+          <Spinner className="h-7 w-7" />
+        </div>
+      ) : rows.length === 0 ? (
+        <Card>
+          <EmptyState icon="sites" title={t("noResults")} />
+        </Card>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {rows.map((s) => {
+            const coverage =
+              s.requiredManpower > 0
+                ? Math.round((s.employeesCount / s.requiredManpower) * 100)
+                : null;
+            return (
+              <Card key={s.id} className="flex flex-col">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-blue-700">
+                      <Icon name="sites" className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="truncate font-bold text-slate-900">
+                        {s.name}
+                      </h3>
+                      {s.sector?.name && (
+                        <p className="truncate text-[13px] text-slate-500">
+                          {s.sector.name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <Badge tone={s.isActive ? "green" : "slate"}>
+                    {s.isActive ? t("active") : t("inactive")}
+                  </Badge>
+                </div>
+
+                <dl className="mt-4 space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <dt className="text-slate-500">{t("staff")}</dt>
+                    <dd className="font-bold tabular-nums text-slate-900">
+                      {s.employeesCount}
+                      <span className="font-medium text-slate-400">
+                        {" "}
+                        / {s.requiredManpower}
+                      </span>
+                    </dd>
+                  </div>
+                  {coverage !== null && (
+                    <div>
+                      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            coverage >= 100
+                              ? "bg-emerald-500"
+                              : coverage >= 70
+                                ? "bg-amber-500"
+                                : "bg-rose-500"
+                          }`}
+                          style={{ width: `${Math.min(coverage, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {s.contactName && (
+                    <div className="flex items-center justify-between">
+                      <dt className="text-slate-500">{t("contactName")}</dt>
+                      <dd className="font-medium text-slate-700">
+                        {s.contactName}
+                      </dd>
+                    </div>
+                  )}
+                  {s.location && (
+                    <div className="flex items-center justify-between gap-2">
+                      <dt className="shrink-0 text-slate-500">
+                        {t("location")}
+                      </dt>
+                      <dd className="truncate text-end font-medium text-slate-700">
+                        {s.location}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+
+                <div className="mt-4 flex gap-1 border-t border-slate-100 pt-3">
+                  <Btn
+                    variant="ghost"
+                    onClick={() => openEdit(s)}
+                    className="px-3 py-1.5 text-[13px]"
+                  >
+                    {t("edit")}
+                  </Btn>
+                  <Btn
+                    variant="ghost"
+                    onClick={() => remove(s)}
+                    className="px-3 py-1.5 text-[13px] text-rose-600 hover:bg-rose-50"
+                  >
+                    {t("delete")}
+                  </Btn>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       )}
 
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <button
+        <div className="flex items-center justify-center gap-2">
+          <Btn
+            variant="outline"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-40"
+            className="px-3"
+            aria-label="prev"
           >
-            ‹
-          </button>
-          <span className="text-sm text-slate-600">
+            <Icon name="chevronLeft" className="h-4 w-4" />
+          </Btn>
+          <span className="text-sm font-medium tabular-nums text-slate-600">
             {page} / {totalPages}
           </span>
-          <button
+          <Btn
+            variant="outline"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-40"
+            className="px-3"
+            aria-label="next"
           >
-            ›
-          </button>
+            <Icon name="chevronRight" className="h-4 w-4" />
+          </Btn>
         </div>
       )}
 
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-[2px]">
           <form
             onSubmit={submit}
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
           >
-            <h2 className="text-lg font-bold text-slate-900">
-              {modal.editing ? t("edit") : t("add")}
-            </h2>
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-lg font-extrabold tracking-tight text-slate-900">
+                {modal.editing ? t("edit") : t("add")}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setModal(null)}
+                className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="close"
+              >
+                <Icon name="x" className="h-5 w-5" />
+              </button>
+            </div>
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label className={labelCls}>
-                {t("name")} *
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <Field label={`${t("name")} *`}>
                 <input
                   required
                   value={form.name}
                   onChange={(e) =>
                     setForm({ ...form, name: e.currentTarget.value })
                   }
-                  className={inputCls}
+                  className={fieldInput}
                 />
-              </label>
-              <label className={labelCls}>
-                {t("sector")} *
+              </Field>
+              <Field label={`${t("sector")} *`}>
                 <select
                   required
                   value={form.sectorId}
                   onChange={(e) =>
                     setForm({ ...form, sectorId: e.currentTarget.value })
                   }
-                  className={inputCls}
+                  className={fieldInput}
                 >
                   <option value="">{t("allSectors")}</option>
                   {sectors.map((s) => (
@@ -363,21 +428,19 @@ export default function SitesPage() {
                   ))}
                   <option value="__new__">{t("newSector")}</option>
                 </select>
-              </label>
+              </Field>
               {form.sectorId === "__new__" && (
-                <label className={labelCls}>
-                  {t("newSectorName")} *
+                <Field label={`${t("newSectorName")} *`}>
                   <input
                     value={form.newSectorName}
                     onChange={(e) =>
                       setForm({ ...form, newSectorName: e.currentTarget.value })
                     }
-                    className={inputCls}
+                    className={fieldInput}
                   />
-                </label>
+                </Field>
               )}
-              <label className={labelCls}>
-                {t("requiredManpower")}
+              <Field label={t("requiredManpower")}>
                 <input
                   type="number"
                   min={0}
@@ -388,51 +451,48 @@ export default function SitesPage() {
                       requiredManpower: e.currentTarget.value,
                     })
                   }
-                  className={inputCls}
+                  className={fieldInput}
                   dir="ltr"
                 />
-              </label>
-              <label className={labelCls}>
-                {t("location")}
+              </Field>
+              <Field label={t("location")}>
                 <input
                   value={form.location}
                   onChange={(e) =>
                     setForm({ ...form, location: e.currentTarget.value })
                   }
-                  className={inputCls}
+                  className={fieldInput}
                 />
-              </label>
-              <label className={labelCls}>
-                {t("contactName")}
+              </Field>
+              <Field label={t("contactName")}>
                 <input
                   value={form.contactName}
                   onChange={(e) =>
                     setForm({ ...form, contactName: e.currentTarget.value })
                   }
-                  className={inputCls}
+                  className={fieldInput}
                 />
-              </label>
-              <label className={labelCls}>
-                {t("contactPhone")}
+              </Field>
+              <Field label={t("contactPhone")}>
                 <input
                   inputMode="tel"
                   value={form.contactPhone}
                   onChange={(e) =>
                     setForm({ ...form, contactPhone: e.currentTarget.value })
                   }
-                  className={inputCls}
+                  className={fieldInput}
                   dir="ltr"
                 />
-              </label>
+              </Field>
               {modal.editing && (
-                <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <label className="flex items-center gap-2.5 self-center text-sm font-semibold text-slate-700">
                   <input
                     type="checkbox"
                     checked={form.isActive}
                     onChange={(e) =>
                       setForm({ ...form, isActive: e.currentTarget.checked })
                     }
-                    className="h-4 w-4"
+                    className="h-4 w-4 rounded accent-blue-700"
                   />
                   {t("isActive")}
                 </label>
@@ -440,26 +500,19 @@ export default function SitesPage() {
             </div>
 
             {formError && (
-              <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p className="mt-4 rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm font-medium text-rose-700">
                 {formError}
               </p>
             )}
 
             <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setModal(null)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-              >
+              <Btn variant="ghost" type="button" onClick={() => setModal(null)}>
                 {t("cancel")}
-              </button>
-              <button
-                type="submit"
-                disabled={busy}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-              >
+              </Btn>
+              <Btn type="submit" disabled={busy}>
+                {busy && <Spinner className="h-4 w-4" />}
                 {t("save")}
-              </button>
+              </Btn>
             </div>
           </form>
         </div>

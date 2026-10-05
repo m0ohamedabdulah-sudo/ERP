@@ -2,6 +2,18 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import {
+  PageHeader,
+  Card,
+  Btn,
+  Badge,
+  Stat,
+  Field,
+  fieldInput,
+  EmptyState,
+  Spinner,
+  Icon,
+} from "../_ui";
 
 interface InvoiceLine { id: string; descriptionAr: string; descriptionEn: string; quantity: number; unitPrice: number; amount: number }
 interface Payment { id: string; paymentNo: string; amount: number; paidAt: string; method: string; reference: string | null }
@@ -24,18 +36,14 @@ interface Envelope {
   meta?: { page: number; totalPages: number };
 }
 
-const inputCls =
-  "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none";
-const labelCls = "block text-sm font-medium text-slate-700";
-
 const STATUSES = ["DRAFT", "ISSUED", "SENT", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED"];
 const METHODS = ["CASH", "BANK_TRANSFER", "CHECK", "ELECTRONIC"];
 
-function statusColor(s: string): string {
-  if (s === "PAID") return "bg-green-100 text-green-700";
-  if (s === "OVERDUE") return "bg-red-100 text-red-700";
-  if (s === "DRAFT" || s === "CANCELLED") return "bg-slate-200 text-slate-600";
-  return "bg-amber-100 text-amber-700";
+function statusTone(s: string): "green" | "red" | "amber" | "slate" {
+  if (s === "PAID") return "green";
+  if (s === "OVERDUE") return "red";
+  if (s === "DRAFT" || s === "CANCELLED") return "slate";
+  return "amber";
 }
 
 /** Billing & collection: list, generate from attendance, detail, payments. */
@@ -61,6 +69,7 @@ export default function InvoicesPage({
   const [payForm, setPayForm] = useState({ amount: "", paidAt: new Date().toISOString().slice(0, 10), method: "CASH", reference: "" });
   const [showPay, setShowPay] = useState(false);
   const isAr = locale === "ar";
+  const backIcon = isAr ? "chevronRight" : "chevronLeft";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -172,126 +181,164 @@ export default function InvoicesPage({
 
   if (detail) {
     return (
-      <div>
-        <button onClick={() => setDetail(null)} className="text-sm font-medium text-slate-600 hover:text-slate-900">
-          ‹ {t("back")}
-        </button>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-2xl font-bold text-slate-900">
-            {t("invoiceNo")}: <span className="font-mono">{detail.invoiceNo}</span>
-          </h1>
-          <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColor(detail.status)}`}>
-            {t(`status_${detail.status}`)}
-          </span>
+      <div className="space-y-5">
+        <Btn variant="ghost" onClick={() => setDetail(null)} className="px-3 py-1.5">
+          <Icon name={backIcon} className="h-4 w-4" />
+          {t("back")}
+        </Btn>
+
+        <PageHeader
+          title={`${t("invoiceNo")}: ${detail.invoiceNo}`}
+          actions={<Badge tone={statusTone(detail.status)}>{t(`status_${detail.status}`)}</Badge>}
+        />
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Stat label={t("total")} value={<span dir="ltr">{money(detail.total)}</span>} icon="invoices" tone="blue" />
+          <Stat label={t("paid")} value={<span dir="ltr">{money(detail.paidTotal)}</span>} icon="check" tone="green" />
+          <Stat label={t("remaining")} value={<span dir="ltr">{money(detail.remaining)}</span>} icon="clock" tone={detail.remaining > 0 ? "red" : "green"} />
         </div>
 
-        <div className="mt-4 rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-          <dl className="grid gap-3 text-sm sm:grid-cols-3">
-            <div><dt className="text-slate-500">{t("client")}</dt><dd className="font-medium">{isAr ? detail.client.companyNameAr : detail.client.companyNameEn}</dd></div>
-            <div><dt className="text-slate-500">{t("contract")}</dt><dd className="font-medium font-mono">{detail.contract.contractNo}</dd></div>
-            <div><dt className="text-slate-500">{t("period")}</dt><dd className="font-medium">{detail.periodStart.slice(0, 10)} → {detail.periodEnd.slice(0, 10)}</dd></div>
-            <div><dt className="text-slate-500">{t("subtotal")}</dt><dd className="font-medium" dir="ltr">{money(detail.subtotal)}</dd></div>
-            <div><dt className="text-slate-500">{t("discount")} + {t("tax")}</dt><dd className="font-medium" dir="ltr">{money(detail.discountAmount)} + {money(detail.taxAmount)}</dd></div>
-            <div><dt className="text-slate-500">{t("total")}</dt><dd className="text-lg font-bold" dir="ltr">{money(detail.total)}</dd></div>
-            <div><dt className="text-slate-500">{t("paid")}</dt><dd className="font-medium text-green-700" dir="ltr">{money(detail.paidTotal)}</dd></div>
-            <div><dt className="text-slate-500">{t("remaining")}</dt><dd className="font-medium text-red-700" dir="ltr">{money(detail.remaining)}</dd></div>
+        <Card>
+          <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
+            <div>
+              <dt className="text-[13px] font-medium text-slate-400">{t("client")}</dt>
+              <dd className="mt-0.5 font-semibold text-slate-900">{isAr ? detail.client.companyNameAr : detail.client.companyNameEn}</dd>
+            </div>
+            <div>
+              <dt className="text-[13px] font-medium text-slate-400">{t("contract")}</dt>
+              <dd className="mt-0.5 font-mono font-semibold text-slate-900">{detail.contract.contractNo}</dd>
+            </div>
+            <div>
+              <dt className="text-[13px] font-medium text-slate-400">{t("period")}</dt>
+              <dd className="mt-0.5 font-semibold text-slate-900" dir="ltr">{detail.periodStart.slice(0, 10)} → {detail.periodEnd.slice(0, 10)}</dd>
+            </div>
+            <div>
+              <dt className="text-[13px] font-medium text-slate-400">{t("subtotal")}</dt>
+              <dd className="mt-0.5 font-semibold tabular-nums text-slate-900" dir="ltr">{money(detail.subtotal)}</dd>
+            </div>
+            <div>
+              <dt className="text-[13px] font-medium text-slate-400">{t("discount")} + {t("tax")}</dt>
+              <dd className="mt-0.5 font-semibold tabular-nums text-slate-900" dir="ltr">{money(detail.discountAmount)} + {money(detail.taxAmount)}</dd>
+            </div>
           </dl>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-5">
             {detail.status === "DRAFT" && (
               <>
-                <button disabled={busy} onClick={() => doTransition("issue")} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{t("issue")}</button>
-                <button disabled={busy} onClick={recalculate} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium disabled:opacity-50">{t("recalculate")}</button>
-                <button disabled={busy} onClick={() => doTransition("cancel")} className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 disabled:opacity-50">{t("cancelInv")}</button>
+                <Btn disabled={busy} onClick={() => doTransition("issue")}>
+                  {t("issue")}
+                </Btn>
+                <Btn variant="outline" disabled={busy} onClick={recalculate}>
+                  {t("recalculate")}
+                </Btn>
+                <Btn variant="danger" disabled={busy} onClick={() => doTransition("cancel")}>
+                  {t("cancelInv")}
+                </Btn>
               </>
             )}
             {detail.status === "ISSUED" && (
-              <button disabled={busy} onClick={() => doTransition("send")} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{t("send")}</button>
+              <Btn disabled={busy} onClick={() => doTransition("send")}>
+                {t("send")}
+              </Btn>
             )}
           </div>
+        </Card>
+
+        <div>
+          <h2 className="mb-3 text-lg font-extrabold tracking-tight text-slate-900">{t("lines")}</h2>
+          <Card className="overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50/70 text-xs uppercase tracking-wider text-slate-400">
+                    <th className="px-5 py-3 text-start font-semibold">{t("description")}</th>
+                    <th className="px-5 py-3 text-start font-semibold">{t("qty")}</th>
+                    <th className="px-5 py-3 text-start font-semibold">{t("unitPrice")}</th>
+                    <th className="px-5 py-3 text-end font-semibold">{t("total")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {detail.lines.map((l) => (
+                    <tr key={l.id} className="transition hover:bg-slate-50/70">
+                      <td className="px-5 py-3 font-medium text-slate-900">{isAr ? l.descriptionAr : l.descriptionEn}</td>
+                      <td className="px-5 py-3 tabular-nums text-slate-600" dir="ltr">{l.quantity}</td>
+                      <td className="px-5 py-3 tabular-nums text-slate-600" dir="ltr">{money(l.unitPrice)}</td>
+                      <td className="px-5 py-3 font-semibold tabular-nums text-slate-900" dir="ltr">{money(l.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         </div>
 
-        <h2 className="mt-6 text-lg font-semibold text-slate-900">{t("lines")}</h2>
-        <div className="mt-2 overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-slate-200 text-slate-500">
-              <th className="px-4 py-2.5 text-start font-medium">{t("description")}</th>
-              <th className="px-4 py-2.5 text-start font-medium">{t("qty")}</th>
-              <th className="px-4 py-2.5 text-start font-medium">{t("unitPrice")}</th>
-              <th className="px-4 py-2.5 text-start font-medium">{t("total")}</th>
-            </tr></thead>
-            <tbody>
-              {detail.lines.map((l) => (
-                <tr key={l.id} className="border-b border-slate-100">
-                  <td className="px-4 py-2.5">{isAr ? l.descriptionAr : l.descriptionEn}</td>
-                  <td className="px-4 py-2.5" dir="ltr">{l.quantity}</td>
-                  <td className="px-4 py-2.5" dir="ltr">{money(l.unitPrice)}</td>
-                  <td className="px-4 py-2.5 font-medium" dir="ltr">{money(l.amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="mt-6 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">{t("payments")}</h2>
-          {detail.status !== "DRAFT" && detail.status !== "CANCELLED" && detail.remaining > 0 && (
-            <button onClick={() => setShowPay(true)} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-              + {t("recordPayment")}
-            </button>
-          )}
-        </div>
-        <div className="mt-2 overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-slate-200 text-slate-500">
-              <th className="px-4 py-2.5 text-start font-medium">{t("paidAt")}</th>
-              <th className="px-4 py-2.5 text-start font-medium">{t("amount")}</th>
-              <th className="px-4 py-2.5 text-start font-medium">{t("method")}</th>
-              <th className="px-4 py-2.5 text-start font-medium">{t("reference")}</th>
-            </tr></thead>
-            <tbody>
-              {detail.payments.map((p) => (
-                <tr key={p.id} className="border-b border-slate-100">
-                  <td className="px-4 py-2.5">{p.paidAt.slice(0, 10)}</td>
-                  <td className="px-4 py-2.5 font-medium" dir="ltr">{money(p.amount)}</td>
-                  <td className="px-4 py-2.5">{t(`method_${p.method}`)}</td>
-                  <td className="px-4 py-2.5 text-slate-500">{p.reference ?? "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {detail.payments.length === 0 && (
-            <p className="px-4 py-6 text-center text-sm text-slate-500">—</p>
-          )}
+        <div>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-extrabold tracking-tight text-slate-900">{t("payments")}</h2>
+            {detail.status !== "DRAFT" && detail.status !== "CANCELLED" && detail.remaining > 0 && (
+              <Btn onClick={() => setShowPay(true)} className="px-3.5 py-2">
+                <Icon name="plus" className="h-4 w-4" />
+                {t("recordPayment")}
+              </Btn>
+            )}
+          </div>
+          <Card className="overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50/70 text-xs uppercase tracking-wider text-slate-400">
+                    <th className="px-5 py-3 text-start font-semibold">{t("paidAt")}</th>
+                    <th className="px-5 py-3 text-start font-semibold">{t("amount")}</th>
+                    <th className="px-5 py-3 text-start font-semibold">{t("method")}</th>
+                    <th className="px-5 py-3 text-start font-semibold">{t("reference")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {detail.payments.map((p) => (
+                    <tr key={p.id} className="transition hover:bg-slate-50/70">
+                      <td className="px-5 py-3 text-slate-600">{p.paidAt.slice(0, 10)}</td>
+                      <td className="px-5 py-3 font-semibold tabular-nums text-slate-900" dir="ltr">{money(p.amount)}</td>
+                      <td className="px-5 py-3 text-slate-600">{t(`method_${p.method}`)}</td>
+                      <td className="px-5 py-3 text-slate-500" dir="ltr">{p.reference ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {detail.payments.length === 0 && (
+              <p className="px-4 py-6 text-center text-sm text-slate-400">—</p>
+            )}
+          </Card>
         </div>
 
         {showPay && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <form onSubmit={recordPayment} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-              <h3 className="text-lg font-bold text-slate-900">{t("recordPayment")}</h3>
-              <div className="mt-4 grid gap-4">
-                <label className={labelCls}>{t("amount")} *
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]">
+            <form onSubmit={recordPayment} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+              <h3 className="text-lg font-extrabold tracking-tight text-slate-900">{t("recordPayment")}</h3>
+              <div className="mt-5 grid gap-4">
+                <Field label={`${t("amount")} *`}>
                   <input type="number" min={0.01} step="0.01" required value={payForm.amount} dir="ltr"
-                    onChange={(e) => setPayForm({ ...payForm, amount: e.currentTarget.value })} className={inputCls} />
-                </label>
-                <label className={labelCls}>{t("paidAt")} *
+                    onChange={(e) => setPayForm({ ...payForm, amount: e.currentTarget.value })} className={fieldInput} />
+                </Field>
+                <Field label={`${t("paidAt")} *`}>
                   <input type="date" required value={payForm.paidAt}
-                    onChange={(e) => setPayForm({ ...payForm, paidAt: e.currentTarget.value })} className={inputCls} />
-                </label>
-                <label className={labelCls}>{t("method")}
-                  <select value={payForm.method} onChange={(e) => setPayForm({ ...payForm, method: e.currentTarget.value })} className={inputCls}>
+                    onChange={(e) => setPayForm({ ...payForm, paidAt: e.currentTarget.value })} className={fieldInput} />
+                </Field>
+                <Field label={t("method")}>
+                  <select value={payForm.method} onChange={(e) => setPayForm({ ...payForm, method: e.currentTarget.value })} className={fieldInput}>
                     {METHODS.map((m) => <option key={m} value={m}>{t(`method_${m}`)}</option>)}
                   </select>
-                </label>
-                <label className={labelCls}>{t("reference")}
+                </Field>
+                <Field label={t("reference")}>
                   <input value={payForm.reference}
-                    onChange={(e) => setPayForm({ ...payForm, reference: e.currentTarget.value })} className={inputCls} dir="ltr" />
-                </label>
+                    onChange={(e) => setPayForm({ ...payForm, reference: e.currentTarget.value })} className={fieldInput} dir="ltr" />
+                </Field>
               </div>
               <div className="mt-6 flex justify-end gap-2">
-                <button type="button" onClick={() => setShowPay(false)}
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium">{t("cancel")}</button>
-                <button type="submit" disabled={busy}
-                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{t("save")}</button>
+                <Btn type="button" variant="ghost" onClick={() => setShowPay(false)}>{t("cancel")}</Btn>
+                <Btn type="submit" disabled={busy}>
+                  {busy ? <Spinner className="h-4 w-4" /> : <Icon name="check" className="h-4 w-4" />}
+                  {t("save")}
+                </Btn>
               </div>
             </form>
           </div>
@@ -301,123 +348,139 @@ export default function InvoicesPage({
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
-        <button onClick={() => { setShowGen(true); setFormError(null); }}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700">
-          {t("generate")}
-        </button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("title")}
+        actions={
+          <Btn onClick={() => { setShowGen(true); setFormError(null); }}>
+            <Icon name="plus" className="h-4 w-4" />
+            {t("generate")}
+          </Btn>
+        }
+      />
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <select value={status} onChange={(e) => { setStatus(e.currentTarget.value); setPage(1); }}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-          <option value="">{t("allStatuses")}</option>
-          {STATUSES.map((s) => <option key={s} value={s}>{t(`status_${s}`)}</option>)}
-        </select>
-        <select value={clientId} onChange={(e) => { setClientId(e.currentTarget.value); setPage(1); }}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-          <option value="">{t("allClients")}</option>
-          {clients.map((c) => <option key={c.id} value={c.id}>{isAr ? c.companyNameAr : c.companyNameEn}</option>)}
-        </select>
-      </div>
+      <Card className="p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <select value={status} onChange={(e) => { setStatus(e.currentTarget.value); setPage(1); }}
+            className={`${fieldInput} !mt-0 w-auto`}>
+            <option value="">{t("allStatuses")}</option>
+            {STATUSES.map((s) => <option key={s} value={s}>{t(`status_${s}`)}</option>)}
+          </select>
+          <select value={clientId} onChange={(e) => { setClientId(e.currentTarget.value); setPage(1); }}
+            className={`${fieldInput} !mt-0 w-auto`}>
+            <option value="">{t("allClients")}</option>
+            {clients.map((c) => <option key={c.id} value={c.id}>{isAr ? c.companyNameAr : c.companyNameEn}</option>)}
+          </select>
+        </div>
+      </Card>
 
-      <div className="mt-4 overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-        <table className="w-full text-sm">
-          <thead><tr className="border-b border-slate-200 text-slate-500">
-            <th className="px-4 py-3 text-start font-medium">{t("invoiceNo")}</th>
-            <th className="px-4 py-3 text-start font-medium">{t("client")}</th>
-            <th className="px-4 py-3 text-start font-medium">{t("period")}</th>
-            <th className="px-4 py-3 text-start font-medium">{t("total")}</th>
-            <th className="px-4 py-3 text-start font-medium">{t("remaining")}</th>
-            <th className="px-4 py-3 text-start font-medium">{t("status")}</th>
-            <th className="px-4 py-3 text-start font-medium">{t("actions")}</th>
-          </tr></thead>
-          <tbody>
-            {rows.map((inv) => (
-              <tr key={inv.id} className="border-b border-slate-100">
-                <td className="px-4 py-3 font-mono text-xs">{inv.invoiceNo}</td>
-                <td className="px-4 py-3 font-medium text-slate-900">
-                  {isAr ? inv.client.companyNameAr : inv.client.companyNameEn}
-                </td>
-                <td className="px-4 py-3 text-xs text-slate-600">
-                  {inv.periodStart.slice(0, 10)} → {inv.periodEnd.slice(0, 10)}
-                </td>
-                <td className="px-4 py-3 font-medium" dir="ltr">{money(inv.total)}</td>
-                <td className={`px-4 py-3 font-medium ${inv.remaining > 0 ? "text-red-700" : "text-green-700"}`} dir="ltr">
-                  {money(inv.remaining)}
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor(inv.status)}`}>
-                    {t(`status_${inv.status}`)}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <button onClick={() => refreshDetail(inv.id)}
-                    className="text-sm font-medium text-slate-700 hover:text-slate-900">
-                    {t("details")}
-                  </button>
-                </td>
+      <Card className="overflow-hidden p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50/70 text-xs uppercase tracking-wider text-slate-400">
+                <th className="px-5 py-3.5 text-start font-semibold">{t("invoiceNo")}</th>
+                <th className="px-5 py-3.5 text-start font-semibold">{t("client")}</th>
+                <th className="px-5 py-3.5 text-start font-semibold">{t("period")}</th>
+                <th className="px-5 py-3.5 text-start font-semibold">{t("total")}</th>
+                <th className="px-5 py-3.5 text-start font-semibold">{t("remaining")}</th>
+                <th className="px-5 py-3.5 text-start font-semibold">{t("status")}</th>
+                <th className="px-5 py-3.5 text-end font-semibold">{t("actions")}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {!loading && rows.length === 0 && (
-          <p className="px-4 py-8 text-center text-sm text-slate-500">{t("noResults")}</p>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((inv) => (
+                <tr key={inv.id} className="transition hover:bg-slate-50/70">
+                  <td className="px-5 py-3.5 font-mono text-xs font-semibold text-slate-900">{inv.invoiceNo}</td>
+                  <td className="px-5 py-3.5 font-semibold text-slate-900">
+                    {isAr ? inv.client.companyNameAr : inv.client.companyNameEn}
+                  </td>
+                  <td className="px-5 py-3.5 text-xs text-slate-600" dir="ltr">
+                    {inv.periodStart.slice(0, 10)} → {inv.periodEnd.slice(0, 10)}
+                  </td>
+                  <td className="px-5 py-3.5 font-semibold tabular-nums text-slate-900" dir="ltr">{money(inv.total)}</td>
+                  <td className={`px-5 py-3.5 font-semibold tabular-nums ${inv.remaining > 0 ? "text-rose-700" : "text-emerald-700"}`} dir="ltr">
+                    {money(inv.remaining)}
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <Badge tone={statusTone(inv.status)}>{t(`status_${inv.status}`)}</Badge>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <div className="flex justify-end">
+                      <Btn variant="ghost" onClick={() => refreshDetail(inv.id)} className="px-3 py-1.5">
+                        {t("details")}
+                      </Btn>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {loading ? (
+          <div className="flex justify-center py-12 text-slate-400">
+            <Spinner className="h-7 w-7" />
+          </div>
+        ) : (
+          rows.length === 0 && (
+            <EmptyState icon="invoices" title={t("noResults")} />
+          )
         )}
-      </div>
+      </Card>
 
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-40">‹</button>
-          <span className="text-sm text-slate-600">{page} / {totalPages}</span>
-          <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-40">›</button>
+        <div className="flex items-center justify-center gap-2">
+          <Btn variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="px-3 py-1.5">
+            <Icon name="chevronLeft" className="h-4 w-4" />
+          </Btn>
+          <span className="text-sm font-medium text-slate-600">{page} / {totalPages}</span>
+          <Btn variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="px-3 py-1.5">
+            <Icon name="chevronRight" className="h-4 w-4" />
+          </Btn>
         </div>
       )}
 
       {showGen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={generate} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">{t("generateTitle")}</h2>
-            <div className="mt-4 grid gap-4">
-              <label className={labelCls}>{t("contract")} *
-                <select required value={gen.contractId} onChange={(e) => setGen({ ...gen, contractId: e.currentTarget.value })} className={inputCls}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]">
+          <form onSubmit={generate} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="text-lg font-extrabold tracking-tight text-slate-900">{t("generateTitle")}</h2>
+            <div className="mt-5 grid gap-4">
+              <Field label={`${t("contract")} *`}>
+                <select required value={gen.contractId} onChange={(e) => setGen({ ...gen, contractId: e.currentTarget.value })} className={fieldInput}>
                   <option value="">—</option>
                   {contracts.map((c) => <option key={c.id} value={c.id}>{c.contractNo} — {c.clientName}</option>)}
                 </select>
-              </label>
+              </Field>
               <div className="grid grid-cols-2 gap-4">
-                <label className={labelCls}>{t("periodStart")} *
+                <Field label={`${t("periodStart")} *`}>
                   <input type="date" required value={gen.periodStart}
-                    onChange={(e) => setGen({ ...gen, periodStart: e.currentTarget.value })} className={inputCls} />
-                </label>
-                <label className={labelCls}>{t("periodEnd")} *
+                    onChange={(e) => setGen({ ...gen, periodStart: e.currentTarget.value })} className={fieldInput} />
+                </Field>
+                <Field label={`${t("periodEnd")} *`}>
                   <input type="date" required value={gen.periodEnd}
-                    onChange={(e) => setGen({ ...gen, periodEnd: e.currentTarget.value })} className={inputCls} />
-                </label>
+                    onChange={(e) => setGen({ ...gen, periodEnd: e.currentTarget.value })} className={fieldInput} />
+                </Field>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <label className={labelCls}>{t("taxRate")}
+                <Field label={t("taxRate")}>
                   <input type="number" min={0} max={100} value={gen.taxRate} dir="ltr"
-                    onChange={(e) => setGen({ ...gen, taxRate: e.currentTarget.value })} className={inputCls} />
-                </label>
-                <label className={labelCls}>{t("discountAmount")}
+                    onChange={(e) => setGen({ ...gen, taxRate: e.currentTarget.value })} className={fieldInput} />
+                </Field>
+                <Field label={t("discountAmount")}>
                   <input type="number" min={0} value={gen.discountAmount} dir="ltr"
-                    onChange={(e) => setGen({ ...gen, discountAmount: e.currentTarget.value })} className={inputCls} />
-                </label>
+                    onChange={(e) => setGen({ ...gen, discountAmount: e.currentTarget.value })} className={fieldInput} />
+                </Field>
               </div>
             </div>
             {formError && (
-              <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>
+              <p className="mt-4 rounded-xl bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700 ring-1 ring-rose-100">{formError}</p>
             )}
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowGen(false)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium">{t("cancel")}</button>
-              <button type="submit" disabled={busy}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{t("generate")}</button>
+              <Btn type="button" variant="ghost" onClick={() => setShowGen(false)}>{t("cancel")}</Btn>
+              <Btn type="submit" disabled={busy}>
+                {busy ? <Spinner className="h-4 w-4" /> : <Icon name="check" className="h-4 w-4" />}
+                {t("generate")}
+              </Btn>
             </div>
           </form>
         </div>

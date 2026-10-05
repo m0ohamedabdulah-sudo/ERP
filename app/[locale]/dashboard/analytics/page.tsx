@@ -6,6 +6,7 @@ import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   BarChart, Bar, Legend,
 } from "recharts";
+import { PageHeader, Card, Btn, Badge, Stat, Field, fieldInput, EmptyState, Spinner } from "../_ui";
 
 interface Envelope { success: boolean; data?: unknown }
 interface Daily { date: string; present: number; absent: number }
@@ -27,8 +28,6 @@ function toISO(d: Date): string { return d.toISOString().slice(0, 10); }
 function fmt(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
-
-const card = "rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200";
 
 /** Analytics dashboards: operations, finance, HR. */
 export default function AnalyticsPage() {
@@ -96,52 +95,59 @@ export default function AnalyticsPage() {
   ];
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
+    <div className="space-y-5">
+      <PageHeader title={t("title")} />
 
-      <div className="mt-4 flex gap-1 rounded-xl bg-slate-100 p-1 w-fit">
+      <div className="flex w-fit gap-1 rounded-2xl border border-slate-200/70 bg-white p-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.05)]">
         {tabs.map((tb) => (
           <button key={tb.id} onClick={() => setTab(tb.id)}
-            className={`rounded-lg px-5 py-2 text-sm font-medium ${tab === tb.id ? "bg-white shadow-sm text-slate-900" : "text-slate-500"}`}>
+            className={`rounded-xl px-5 py-2 text-sm font-semibold transition ${
+              tab === tb.id ? "bg-slate-900 text-white shadow" : "text-slate-500 hover:text-slate-800"
+            }`}>
             {tb.label}
           </button>
         ))}
       </div>
 
       {tab === "operations" && (
-        <div className="mt-4">
-          <div className="flex flex-wrap items-end gap-2">
-            <label className="block text-sm font-medium text-slate-700">{t("from")}
+        <div className="space-y-5">
+          <Card className="flex flex-wrap items-end gap-3">
+            <Field label={t("from")}>
               <input type="date" value={from} onChange={(e) => setFrom(e.currentTarget.value)}
-                className="mt-1 block rounded-lg border border-slate-300 px-3 py-2 text-sm" /></label>
-            <label className="block text-sm font-medium text-slate-700">{t("to")}
+                className={fieldInput} />
+            </Field>
+            <Field label={t("to")}>
               <input type="date" value={to} onChange={(e) => setTo(e.currentTarget.value)}
-                className="mt-1 block rounded-lg border border-slate-300 px-3 py-2 text-sm" /></label>
-            <label className="block text-sm font-medium text-slate-700">{t("site")}
+                className={fieldInput} />
+            </Field>
+            <Field label={t("site")}>
               <select value={siteId} onChange={(e) => setSiteId(e.currentTarget.value)}
-                className="mt-1 block min-w-40 rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                className={`${fieldInput} min-w-44`}>
                 <option value="">{t("allSites")}</option>
                 {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select></label>
-            <button onClick={loadOps} disabled={loading}
-              className="rounded-lg bg-slate-900 px-5 py-2 text-sm font-medium text-white disabled:opacity-50">
-              {t("apply")}</button>
-          </div>
+              </select>
+            </Field>
+            <Btn variant="primary" onClick={loadOps} disabled={loading} className="mt-[26px]">
+              {loading ? <Spinner className="h-4 w-4" /> : null}{t("apply")}
+            </Btn>
+          </Card>
 
           {ops && (
             <>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <div className={card}><p className="text-sm text-slate-500">{t("present")}</p>
-                  <p className="text-2xl font-bold text-green-700">{fmt(ops.totals.present)}</p></div>
-                <div className={card}><p className="text-sm text-slate-500">{t("absent")}</p>
-                  <p className="text-2xl font-bold text-red-700">{fmt(ops.totals.absent)}</p></div>
-                <div className={card}><p className="text-sm text-slate-500">{t("siteCoverage")}</p>
-                  <p className="text-2xl font-bold text-slate-900">{fmt(ops.sites.reduce((s, x) => s + x.shortage, 0))} <span className="text-sm font-normal text-slate-500">{t("shortage")}</span></p></div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Stat label={t("present")} value={fmt(ops.totals.present)} icon="check" tone="green" />
+                <Stat label={t("absent")} value={fmt(ops.totals.absent)} icon="x" tone="red" />
+                <Stat
+                  label={t("siteCoverage")}
+                  value={<>{fmt(ops.sites.reduce((s, x) => s + x.shortage, 0))} <span className="text-sm font-medium text-slate-400">{t("shortage")}</span></>}
+                  icon="sites"
+                  tone={ops.sites.some((s) => s.shortage > 0) ? "red" : "blue"}
+                />
               </div>
 
-              <div className={`${card} mt-4`}>
-                <h3 className="font-semibold text-slate-900">{t("attendanceTrend")}</h3>
-                <div className="mt-2 h-64" dir="ltr">
+              <Card>
+                <h3 className="text-[15px] font-bold text-slate-900">{t("attendanceTrend")}</h3>
+                <div className="mt-3 h-64" dir="ltr">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={ops.daily.map((d) => ({ ...d, date: d.date.slice(5) }))}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -153,27 +159,29 @@ export default function AnalyticsPage() {
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
-              </div>
+              </Card>
 
-              <div className={`${card} mt-4`}>
-                <h3 className="font-semibold text-slate-900">{t("siteCoverage")}</h3>
-                <div className="mt-2 overflow-x-auto">
+              <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.05)]">
+                <h3 className="px-5 pt-5 text-[15px] font-bold text-slate-900">{t("siteCoverage")}</h3>
+                <div className="mt-3 overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead><tr className="border-b border-slate-200 text-slate-500">
-                      <th className="px-3 py-2 text-start font-medium">{t("site")}</th>
-                      <th className="px-3 py-2 text-center font-medium">{t("required")}</th>
-                      <th className="px-3 py-2 text-center font-medium">{t("active")}</th>
-                      <th className="px-3 py-2 text-center font-medium">{t("presentToday")}</th>
-                      <th className="px-3 py-2 text-center font-medium">{t("shortage")}</th>
+                    <thead><tr className="border-y border-slate-100 bg-slate-50/60 text-slate-500">
+                      <th className="px-5 py-3 text-start font-semibold">{t("site")}</th>
+                      <th className="px-3 py-3 text-center font-semibold">{t("required")}</th>
+                      <th className="px-3 py-3 text-center font-semibold">{t("active")}</th>
+                      <th className="px-3 py-3 text-center font-semibold">{t("presentToday")}</th>
+                      <th className="px-3 py-3 text-center font-semibold">{t("shortage")}</th>
                     </tr></thead>
                     <tbody>
                       {ops.sites.map((s) => (
-                        <tr key={s.siteId} className={`border-b border-slate-100 ${s.shortage > 0 ? "bg-red-50" : ""}`}>
-                          <td className="px-3 py-2 font-medium text-slate-900">{s.siteName}</td>
-                          <td className="px-3 py-2 text-center">{s.required}</td>
-                          <td className="px-3 py-2 text-center">{s.active}</td>
-                          <td className="px-3 py-2 text-center">{s.presentToday}</td>
-                          <td className={`px-3 py-2 text-center font-bold ${s.shortage > 0 ? "text-red-700" : "text-green-700"}`}>{s.shortage}</td>
+                        <tr key={s.siteId} className={`border-b border-slate-100 last:border-0 hover:bg-slate-50/60 ${s.shortage > 0 ? "bg-rose-50/50" : ""}`}>
+                          <td className="px-5 py-3 font-semibold text-slate-900">{s.siteName}</td>
+                          <td className="px-3 py-3 text-center tabular-nums">{s.required}</td>
+                          <td className="px-3 py-3 text-center tabular-nums">{s.active}</td>
+                          <td className="px-3 py-3 text-center tabular-nums">{s.presentToday}</td>
+                          <td className="px-3 py-3 text-center">
+                            <Badge tone={s.shortage > 0 ? "red" : "green"}>{s.shortage}</Badge>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -186,33 +194,31 @@ export default function AnalyticsPage() {
       )}
 
       {tab === "finance" && (
-        <div className="mt-4">
-          <div className="flex items-end gap-2">
-            <label className="block text-sm font-medium text-slate-700">{t("months")}
+        <div className="space-y-5">
+          <Card className="flex flex-wrap items-end gap-3">
+            <Field label={t("months")}>
               <select value={months} onChange={(e) => setMonths(e.currentTarget.value)}
-                className="mt-1 block rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                className={`${fieldInput} min-w-28`}>
                 {["3", "6", "12"].map((m) => <option key={m} value={m}>{m}</option>)}
-              </select></label>
-            <button onClick={loadFin} disabled={loading}
-              className="rounded-lg bg-slate-900 px-5 py-2 text-sm font-medium text-white disabled:opacity-50">{t("apply")}</button>
-          </div>
+              </select>
+            </Field>
+            <Btn variant="primary" onClick={loadFin} disabled={loading} className="mt-[26px]">
+              {loading ? <Spinner className="h-4 w-4" /> : null}{t("apply")}
+            </Btn>
+          </Card>
 
           {fin && (
             <>
-              <div className="mt-4 grid gap-3 sm:grid-cols-4">
-                <div className={card}><p className="text-sm text-slate-500">{t("totalPayroll")}</p>
-                  <p className="text-xl font-bold text-slate-900">{fmt(fin.totals.payroll)}</p></div>
-                <div className={card}><p className="text-sm text-slate-500">{t("totalInvoiced")}</p>
-                  <p className="text-xl font-bold text-slate-900">{fmt(fin.totals.invoiced)}</p></div>
-                <div className={card}><p className="text-sm text-slate-500">{t("totalCollected")}</p>
-                  <p className="text-xl font-bold text-green-700">{fmt(fin.totals.collected)}</p></div>
-                <div className={card}><p className="text-sm text-slate-500">{t("outstanding")}</p>
-                  <p className="text-xl font-bold text-red-700">{fmt(fin.outstanding)}</p></div>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <Stat label={t("totalPayroll")} value={fmt(fin.totals.payroll)} icon="payroll" tone="slate" />
+                <Stat label={t("totalInvoiced")} value={fmt(fin.totals.invoiced)} icon="invoices" tone="blue" />
+                <Stat label={t("totalCollected")} value={fmt(fin.totals.collected)} icon="check" tone="green" />
+                <Stat label={t("outstanding")} value={fmt(fin.outstanding)} icon="clock" tone="red" />
               </div>
 
-              <div className={`${card} mt-4`}>
-                <h3 className="font-semibold text-slate-900">{t("monthlyOverview")}</h3>
-                <div className="mt-2 h-72" dir="ltr">
+              <Card>
+                <h3 className="text-[15px] font-bold text-slate-900">{t("monthlyOverview")}</h3>
+                <div className="mt-3 h-72" dir="ltr">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={fin.monthly}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -220,77 +226,80 @@ export default function AnalyticsPage() {
                       <YAxis tick={{ fontSize: 11 }} />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="payroll" name={t("payroll")} fill="#0f172a" />
-                      <Bar dataKey="invoiced" name={t("invoiced")} fill="#2563eb" />
-                      <Bar dataKey="collected" name={t("collected")} fill="#16a34a" />
+                      <Bar dataKey="payroll" name={t("payroll")} fill="#0f172a" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="invoiced" name={t("invoiced")} fill="#2563eb" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="collected" name={t("collected")} fill="#16a34a" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-              </div>
+              </Card>
             </>
           )}
         </div>
       )}
 
       {tab === "hr" && hr && (
-        <div className="mt-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className={card}><p className="text-sm text-slate-500">{t("totalActive")}</p>
-              <p className="text-2xl font-bold text-slate-900">{hr.totalActive}</p></div>
-            <div className={card}><p className="text-sm text-slate-500">{t("expiringDocuments")}</p>
-              <p className="text-2xl font-bold text-amber-700">{hr.expiringDocuments.length}</p></div>
-            <div className={card}><p className="text-sm text-slate-500">{t("expiredDocuments")}</p>
-              <p className="text-2xl font-bold text-red-700">{hr.expiredCount}</p></div>
+        <div className="space-y-5">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Stat label={t("totalActive")} value={hr.totalActive} icon="users" tone="blue" />
+            <Stat label={t("expiringDocuments")} value={hr.expiringDocuments.length} icon="clock" tone="amber" />
+            <Stat label={t("expiredDocuments")} value={hr.expiredCount} icon="x" tone="red" />
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <div className={card}>
-              <h3 className="font-semibold text-slate-900">{t("headcountByStatus")}</h3>
-              <div className="mt-2 space-y-1.5">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <h3 className="text-[15px] font-bold text-slate-900">{t("headcountByStatus")}</h3>
+              <div className="mt-3 space-y-1.5">
                 {hr.byStatus.map((r) => (
-                  <div key={r.status} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
-                    <span className="font-medium">{r.status}</span><span className="font-bold">{r.count}</span>
+                  <div key={r.status} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5 text-sm">
+                    <span className="font-medium text-slate-700">{r.status}</span>
+                    <Badge tone="blue">{r.count}</Badge>
                   </div>
                 ))}
               </div>
-            </div>
-            <div className={card}>
-              <h3 className="font-semibold text-slate-900">{t("headcountBySite")}</h3>
-              <div className="mt-2 space-y-1.5">
+            </Card>
+            <Card>
+              <h3 className="text-[15px] font-bold text-slate-900">{t("headcountBySite")}</h3>
+              <div className="mt-3 space-y-1.5">
                 {hr.bySite.map((r) => (
-                  <div key={r.siteName} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
-                    <span className="font-medium">{r.siteName}</span><span className="font-bold">{r.count}</span>
+                  <div key={r.siteName} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5 text-sm">
+                    <span className="font-medium text-slate-700">{r.siteName}</span>
+                    <Badge tone="blue">{r.count}</Badge>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           </div>
 
-          <div className={`${card} mt-4`}>
-            <h3 className="font-semibold text-slate-900">{t("expiringDocuments")}</h3>
-            {hr.expiringDocuments.length === 0
-              ? <p className="mt-2 text-sm text-slate-500">{t("noData")}</p>
-              : (
-                <div className="mt-2 overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead><tr className="border-b border-slate-200 text-slate-500">
-                      <th className="px-3 py-2 text-start font-medium">{t("employee")}</th>
-                      <th className="px-3 py-2 text-start font-medium">{t("document")}</th>
-                      <th className="px-3 py-2 text-center font-medium">{t("expiresAt")}</th>
-                    </tr></thead>
-                    <tbody>
-                      {hr.expiringDocuments.map((d, i) => (
-                        <tr key={i} className="border-b border-slate-100">
-                          <td className="px-3 py-2">{d.employeeName} <span className="font-mono text-xs text-slate-400">{d.cardNumber}</span></td>
-                          <td className="px-3 py-2">{locale === "ar" ? d.documentTypeAr : d.documentTypeEn}</td>
-                          <td className="px-3 py-2 text-center font-medium text-amber-700" dir="ltr">{d.expiresAt}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-          </div>
+          <Card>
+            <h3 className="text-[15px] font-bold text-slate-900">{t("expiringDocuments")}</h3>
+            {hr.expiringDocuments.length === 0 ? (
+              <EmptyState icon="documents" title={t("noData")} />
+            ) : (
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b border-slate-100 text-slate-500">
+                    <th className="px-3 py-2.5 text-start font-semibold">{t("employee")}</th>
+                    <th className="px-3 py-2.5 text-start font-semibold">{t("document")}</th>
+                    <th className="px-3 py-2.5 text-center font-semibold">{t("expiresAt")}</th>
+                  </tr></thead>
+                  <tbody>
+                    {hr.expiringDocuments.map((d, i) => (
+                      <tr key={i} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
+                        <td className="px-3 py-2.5 font-medium text-slate-900">
+                          {d.employeeName} <span className="font-mono text-xs font-normal text-slate-400" dir="ltr">{d.cardNumber}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-slate-600">{locale === "ar" ? d.documentTypeAr : d.documentTypeEn}</td>
+                        <td className="px-3 py-2.5 text-center">
+                          <Badge tone="amber"><span dir="ltr">{d.expiresAt}</span></Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
         </div>
       )}
     </div>

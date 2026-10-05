@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import {
+  PageHeader, Card, Btn, Badge, Field, fieldInput, EmptyState, Icon,
+} from "../_ui";
 
 interface Envelope { success: boolean; data?: unknown; error?: { message?: string }; page?: { totalPages: number } }
 interface User { id: string; email: string; fullName: string; phone: string | null; roleId: string; roleName: string; isActive: boolean; lastLoginAt: string | null }
 interface Role { id: string; name: string; description: string | null; userCount: number; permissionIds: string[] }
 interface Permission { id: string; key: string; module: string; description: string | null }
-
-const inputCls = "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none";
-const labelCls = "block text-sm font-medium text-slate-700";
 
 type Tab = "users" | "roles";
 
@@ -146,94 +146,114 @@ export default function UsersPage() {
   }, {});
 
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
-        {tab === "users" && (
-          <button onClick={() => setShowAdd(true)}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">{t("addUser")}</button>
-        )}
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("title")}
+        actions={
+          tab === "users" ? (
+            <Btn variant="primary" onClick={() => setShowAdd(true)}>
+              <Icon name="plus" className="h-4 w-4" />{t("addUser")}
+            </Btn>
+          ) : undefined
+        }
+      />
 
-      <div className="mt-4 flex gap-1 rounded-xl bg-slate-100 p-1 w-fit">
+      <div className="flex w-fit gap-1 rounded-2xl border border-slate-200/70 bg-white p-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.05)]">
         {(["users", "roles"] as Tab[]).map((tb) => (
           <button key={tb} onClick={() => setTab(tb)}
-            className={`rounded-lg px-5 py-2 text-sm font-medium ${tab === tb ? "bg-white shadow-sm text-slate-900" : "text-slate-500"}`}>
+            className={`rounded-xl px-5 py-2 text-sm font-semibold transition ${
+              tab === tb ? "bg-slate-900 text-white shadow" : "text-slate-500 hover:text-slate-800"
+            }`}>
             {t(tb === "users" ? "tabUsers" : "tabRoles")}
           </button>
         ))}
       </div>
 
-      {msg && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{msg}</p>}
+      {msg && (
+        <div className="flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700 ring-1 ring-inset ring-rose-200">
+          <Icon name="x" className="h-4 w-4 shrink-0" />{msg}
+        </div>
+      )}
 
       {tab === "users" && (
         <>
-          <div className="mt-4 flex flex-wrap items-end gap-2">
-            <label className={labelCls}>{t("search")}
+          <Card className="flex flex-wrap items-end gap-3">
+            <Field label={t("search")}>
               <input value={search} onChange={(e) => setSearch(e.currentTarget.value)}
-                className="mt-1 block w-56 rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal" /></label>
-            <label className={labelCls}>{t("role")}
+                className={`${fieldInput} w-56`} />
+            </Field>
+            <Field label={t("role")}>
               <select value={roleFilter} onChange={(e) => setRoleFilter(e.currentTarget.value)}
-                className="mt-1 block rounded-lg border border-slate-300 px-3 py-2 text-sm font-normal">
+                className={`${fieldInput} min-w-40`}>
                 <option value="">{t("allRoles")}</option>
                 {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select></label>
-          </div>
+              </select>
+            </Field>
+          </Card>
 
-          <div className="mt-4 overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-            <table className="w-full text-sm">
-              <thead><tr className="border-b border-slate-200 text-slate-500">
-                <th className="px-4 py-3 text-start font-medium">{t("fullName")}</th>
-                <th className="px-4 py-3 text-start font-medium">{t("email")}</th>
-                <th className="px-4 py-3 text-center font-medium">{t("role")}</th>
-                <th className="px-4 py-3 text-center font-medium">{t("active")}</th>
-                <th className="px-4 py-3 text-end font-medium">—</th>
-              </tr></thead>
-              <tbody>
-                {users.map((u) => (
-                  <tr key={u.id} className="border-b border-slate-100">
-                    <td className="px-4 py-2.5 font-medium text-slate-900">{u.fullName}</td>
-                    <td className="px-4 py-2.5 text-xs" dir="ltr">{u.email}</td>
-                    <td className="px-4 py-2.5 text-center">
-                      <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">{u.roleName}</span></td>
-                    <td className="px-4 py-2.5 text-center">
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${u.isActive ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-500"}`}>
-                        {u.isActive ? t("active") : t("inactive")}</span></td>
-                    <td className="px-4 py-2.5 text-end">
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => openEdit(u)} className="text-xs font-medium text-slate-600">{t("edit")}</button>
-                        <button onClick={() => toggleActive(u)}
-                          className={`text-xs font-medium ${u.isActive ? "text-red-600" : "text-green-700"}`}>
-                          {u.isActive ? t("deactivate") : t("activate")}</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {users.length === 0 && <p className="px-4 py-8 text-center text-sm text-slate-500">{t("noUsers")}</p>}
+          <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.05)]">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="border-b border-slate-100 bg-slate-50/60 text-slate-500">
+                  <th className="px-4 py-3 text-start font-semibold">{t("fullName")}</th>
+                  <th className="px-4 py-3 text-start font-semibold">{t("email")}</th>
+                  <th className="px-4 py-3 text-center font-semibold">{t("role")}</th>
+                  <th className="px-4 py-3 text-center font-semibold">{t("active")}</th>
+                  <th className="px-4 py-3 text-end font-semibold">—</th>
+                </tr></thead>
+                <tbody>
+                  {users.map((u) => (
+                    <tr key={u.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
+                      <td className="px-4 py-2.5 font-semibold text-slate-900">{u.fullName}</td>
+                      <td className="px-4 py-2.5 text-xs" dir="ltr">{u.email}</td>
+                      <td className="px-4 py-2.5 text-center">
+                        <Badge tone={u.roleName === "SUPER_ADMIN" ? "purple" : "slate"}><span dir="ltr">{u.roleName}</span></Badge>
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        <Badge tone={u.isActive ? "green" : "slate"}>{u.isActive ? t("active") : t("inactive")}</Badge>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex justify-end gap-1">
+                          <Btn variant="ghost" onClick={() => openEdit(u)} className="!px-2.5 !py-1.5 !text-xs">
+                            {t("edit")}
+                          </Btn>
+                          <Btn variant="ghost" onClick={() => toggleActive(u)}
+                            className={`!px-2.5 !py-1.5 !text-xs ${u.isActive ? "!text-rose-700" : "!text-emerald-700"}`}>
+                            {u.isActive ? t("deactivate") : t("activate")}
+                          </Btn>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {users.length === 0 && <EmptyState icon="users" title={t("noUsers")} />}
           </div>
         </>
       )}
 
       {tab === "roles" && (
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {roles.map((r) => (
-            <div key={r.id} className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-slate-900" dir="ltr">{r.name}</h3>
-                  <p className="text-xs text-slate-500">{r.userCount} {t("usersCount")} · {r.permissionIds.length} {t("permissions").toLowerCase()}</p>
+            <Card key={r.id} className="!p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-extrabold tracking-tight text-slate-900" dir="ltr">{r.name}</h3>
+                    {r.name === "SUPER_ADMIN" && <Badge tone="amber">{t("protectedRole")}</Badge>}
+                  </div>
+                  <p className="mt-1.5 text-xs text-slate-500">
+                    <span className="font-bold text-slate-700">{r.userCount}</span> {t("usersCount")} · <span className="font-bold text-slate-700">{r.permissionIds.length}</span> {t("permissions").toLowerCase()}
+                  </p>
                 </div>
                 {r.name !== "SUPER_ADMIN" && (
-                  <button onClick={() => openRolePerms(r)}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium">{t("permissions")}</button>
+                  <Btn variant="outline" onClick={() => openRolePerms(r)} className="!px-3 !py-1.5 !text-xs">
+                    {t("permissions")}
+                  </Btn>
                 )}
               </div>
-              {r.name === "SUPER_ADMIN" && (
-                <p className="mt-2 text-xs text-slate-400">{t("protectedRole")}</p>
-              )}
-            </div>
+            </Card>
           ))}
         </div>
       )}
@@ -241,30 +261,34 @@ export default function UsersPage() {
       {showAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form onSubmit={addUser} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">{t("addUser")}</h2>
+            <h2 className="text-lg font-extrabold tracking-tight text-slate-900">{t("addUser")}</h2>
             <div className="mt-4 grid gap-4">
-              <label className={labelCls}>{t("fullName")}
-                <input required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.currentTarget.value })} className={inputCls} /></label>
-              <label className={labelCls}>{t("email")}
+              <Field label={t("fullName")}>
+                <input required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.currentTarget.value })} className={fieldInput} />
+              </Field>
+              <Field label={t("email")}>
                 <input required type="email" value={form.email} dir="ltr"
-                  onChange={(e) => setForm({ ...form, email: e.currentTarget.value })} className={inputCls} /></label>
-              <label className={labelCls}>{t("password")}
+                  onChange={(e) => setForm({ ...form, email: e.currentTarget.value })} className={fieldInput} />
+              </Field>
+              <Field label={t("password")}>
                 <input required type="password" value={form.password} dir="ltr" minLength={8}
-                  onChange={(e) => setForm({ ...form, password: e.currentTarget.value })} className={inputCls} /></label>
+                  onChange={(e) => setForm({ ...form, password: e.currentTarget.value })} className={fieldInput} />
+              </Field>
               <div className="grid grid-cols-2 gap-4">
-                <label className={labelCls}>{t("phone")}
-                  <input value={form.phone} dir="ltr" onChange={(e) => setForm({ ...form, phone: e.currentTarget.value })} className={inputCls} /></label>
-                <label className={labelCls}>{t("role")}
-                  <select required value={form.roleId} onChange={(e) => setForm({ ...form, roleId: e.currentTarget.value })} className={inputCls}>
+                <Field label={t("phone")}>
+                  <input value={form.phone} dir="ltr" onChange={(e) => setForm({ ...form, phone: e.currentTarget.value })} className={fieldInput} />
+                </Field>
+                <Field label={t("role")}>
+                  <select required value={form.roleId} onChange={(e) => setForm({ ...form, roleId: e.currentTarget.value })} className={fieldInput}>
                     <option value="">—</option>
                     {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                  </select></label>
+                  </select>
+                </Field>
               </div>
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowAdd(false)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium">{t("cancel")}</button>
-              <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">{t("save")}</button>
+              <Btn variant="outline" type="button" onClick={() => setShowAdd(false)}>{t("cancel")}</Btn>
+              <Btn variant="primary" type="submit">{t("save")}</Btn>
             </div>
           </form>
         </div>
@@ -273,27 +297,30 @@ export default function UsersPage() {
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form onSubmit={saveEdit} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">{t("edit")} — {editing.fullName}</h2>
+            <h2 className="text-lg font-extrabold tracking-tight text-slate-900">{t("edit")} — {editing.fullName}</h2>
             <div className="mt-4 grid gap-4">
-              <label className={labelCls}>{t("fullName")}
-                <input required value={editForm.fullName} onChange={(e) => setEditForm({ ...editForm, fullName: e.currentTarget.value })} className={inputCls} /></label>
+              <Field label={t("fullName")}>
+                <input required value={editForm.fullName} onChange={(e) => setEditForm({ ...editForm, fullName: e.currentTarget.value })} className={fieldInput} />
+              </Field>
               <div className="grid grid-cols-2 gap-4">
-                <label className={labelCls}>{t("phone")}
-                  <input value={editForm.phone} dir="ltr" onChange={(e) => setEditForm({ ...editForm, phone: e.currentTarget.value })} className={inputCls} /></label>
-                <label className={labelCls}>{t("role")}
-                  <select required value={editForm.roleId} onChange={(e) => setEditForm({ ...editForm, roleId: e.currentTarget.value })} className={inputCls}>
+                <Field label={t("phone")}>
+                  <input value={editForm.phone} dir="ltr" onChange={(e) => setEditForm({ ...editForm, phone: e.currentTarget.value })} className={fieldInput} />
+                </Field>
+                <Field label={t("role")}>
+                  <select required value={editForm.roleId} onChange={(e) => setEditForm({ ...editForm, roleId: e.currentTarget.value })} className={fieldInput}>
                     {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                  </select></label>
+                  </select>
+                </Field>
               </div>
-              <label className={labelCls}>{t("setPassword")}
-                <span className="block text-xs font-normal text-slate-400">{t("leaveBlank")}</span>
+              <Field label={t("setPassword")}>
+                <span className="mt-0.5 block text-xs font-normal text-slate-400">{t("leaveBlank")}</span>
                 <input type="password" value={editForm.password} dir="ltr" minLength={8}
-                  onChange={(e) => setEditForm({ ...editForm, password: e.currentTarget.value })} className={inputCls} /></label>
+                  onChange={(e) => setEditForm({ ...editForm, password: e.currentTarget.value })} className={fieldInput} />
+              </Field>
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" onClick={() => setEditing(null)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium">{t("cancel")}</button>
-              <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">{t("save")}</button>
+              <Btn variant="outline" type="button" onClick={() => setEditing(null)}>{t("cancel")}</Btn>
+              <Btn variant="primary" type="submit">{t("save")}</Btn>
             </div>
           </form>
         </div>
@@ -302,21 +329,22 @@ export default function UsersPage() {
       {editRolePerms && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">{t("permissions")} — <span dir="ltr">{editRolePerms.name}</span></h2>
-            <div className="mt-4 space-y-4">
+            <h2 className="text-lg font-extrabold tracking-tight text-slate-900">{t("permissions")} — <span dir="ltr">{editRolePerms.name}</span></h2>
+            <div className="mt-4 space-y-5">
               {Object.entries(permsByModule).map(([mod, perms]) => (
                 <div key={mod}>
-                  <h3 className="text-sm font-semibold text-slate-700" dir="ltr">{mod}</h3>
-                  <div className="mt-1.5 space-y-1">
+                  <h3 className="text-sm font-bold text-slate-800" dir="ltr">{mod}</h3>
+                  <div className="mt-2 space-y-1.5">
                     {perms.map((p) => (
-                      <label key={p.id} className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                      <label key={p.id} className="flex cursor-pointer items-center gap-3 rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm hover:bg-slate-100/70">
                         <input type="checkbox" checked={permSelection.includes(p.id)}
+                          className="h-4 w-4 shrink-0 rounded accent-blue-700"
                           onChange={(e) => setPermSelection(
                             e.currentTarget.checked
                               ? [...permSelection, p.id]
                               : permSelection.filter((id) => id !== p.id)
                           )} />
-                        <span dir="ltr" className="font-mono text-xs font-medium">{p.key}</span>
+                        <span dir="ltr" className="font-mono text-xs font-semibold text-slate-800">{p.key}</span>
                         {p.description && <span className="text-xs text-slate-500">{p.description}</span>}
                       </label>
                     ))}
@@ -325,10 +353,8 @@ export default function UsersPage() {
               ))}
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <button onClick={() => setEditRolePerms(null)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium">{t("cancel")}</button>
-              <button onClick={saveRolePerms}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">{t("savePermissions")}</button>
+              <Btn variant="outline" onClick={() => setEditRolePerms(null)}>{t("cancel")}</Btn>
+              <Btn variant="primary" onClick={saveRolePerms}>{t("savePermissions")}</Btn>
             </div>
           </div>
         </div>

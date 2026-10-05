@@ -167,7 +167,9 @@
     "deleteBlocked": "Site has active employees — transfer them first",
     "saved": "Saved",
     "saveError": "Could not save — check the fields",
-    "delete": "Delete"
+    "delete": "Delete",
+    "active": "Active",
+    "inactive": "Inactive"
   },
   "attendance": {
     "title": "Attendance",

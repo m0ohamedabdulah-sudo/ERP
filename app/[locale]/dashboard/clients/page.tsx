@@ -2,6 +2,17 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import {
+  PageHeader,
+  Card,
+  Btn,
+  Badge,
+  Field,
+  fieldInput,
+  EmptyState,
+  Spinner,
+  Icon,
+} from "../_ui";
 
 interface Contact {
   id?: string;
@@ -33,10 +44,6 @@ interface Envelope {
   meta?: { page: number; totalPages: number };
 }
 
-const inputCls =
-  "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none";
-const labelCls = "block text-sm font-medium text-slate-700";
-
 const emptyContact = { name: "", role: "", phone: "", email: "", isPrimary: false };
 const emptyForm = {
   companyNameAr: "",
@@ -50,6 +57,12 @@ const emptyForm = {
   notes: "",
   contacts: [ { ...emptyContact } ],
 };
+
+function statusTone(s: string): "green" | "red" | "slate" {
+  if (s === "ACTIVE") return "green";
+  if (s === "BLACKLISTED") return "red";
+  return "slate";
+}
 
 /** Clients list + add/edit with inline contacts + detail view. */
 export default function ClientsPage({
@@ -203,175 +216,180 @@ export default function ClientsPage({
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
-        <button
-          onClick={openAdd}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
-        >
-          {t("add")}
-        </button>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("title")}
+        actions={
+          <Btn onClick={openAdd}>
+            <Icon name="plus" className="h-4 w-4" />
+            {t("add")}
+          </Btn>
+        }
+      />
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <input
-          value={search}
-          onChange={(e) => {
-            setSearch(e.currentTarget.value);
-            setPage(1);
-          }}
-          placeholder={t("searchPh")}
-          className="min-w-52 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-        />
-        <select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.currentTarget.value);
-            setPage(1);
-          }}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        >
-          <option value="">{t("allStatuses")}</option>
-          {["ACTIVE", "INACTIVE", "BLACKLISTED"].map((s) => (
-            <option key={s} value={s}>
-              {t(`status_${s}`)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="mt-4 overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 text-slate-500">
-              <th className="px-4 py-3 text-start font-medium">
-                {t("companyNameAr")}
-              </th>
-              <th className="px-4 py-3 text-start font-medium">{t("phone")}</th>
-              <th className="px-4 py-3 text-start font-medium">{t("status")}</th>
-              <th className="px-4 py-3 text-start font-medium">{t("actions")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((c) => (
-              <tr key={c.id} className="border-b border-slate-100">
-                <td className="px-4 py-3 font-medium text-slate-900">
-                  {isAr ? c.companyNameAr : c.companyNameEn}
-                  <span className="block text-xs font-normal text-slate-500">
-                    {c.taxId ?? ""}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-slate-600" dir="ltr">
-                  {c.phone ?? "—"}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      c.status === "ACTIVE"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-slate-200 text-slate-600"
-                    }`}
-                  >
-                    {t(`status_${c.status}`)}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => openDetail(c.id)}
-                      className="text-sm font-medium text-slate-700 hover:text-slate-900"
-                    >
-                      {t("details")}
-                    </button>
-                    <button
-                      onClick={() => openEdit(c)}
-                      className="text-sm font-medium text-slate-700 hover:text-slate-900"
-                    >
-                      {t("edit")}
-                    </button>
-                  </div>
-                </td>
-              </tr>
+      <Card className="p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={search}
+            onChange={(e) => {
+              setSearch(e.currentTarget.value);
+              setPage(1);
+            }}
+            placeholder={t("searchPh")}
+            className={`${fieldInput} !mt-0 min-w-52 flex-1`}
+          />
+          <select
+            value={status}
+            onChange={(e) => {
+              setStatus(e.currentTarget.value);
+              setPage(1);
+            }}
+            className={`${fieldInput} !mt-0 w-auto`}
+          >
+            <option value="">{t("allStatuses")}</option>
+            {["ACTIVE", "INACTIVE", "BLACKLISTED"].map((s) => (
+              <option key={s} value={s}>
+                {t(`status_${s}`)}
+              </option>
             ))}
-          </tbody>
-        </table>
-        {!loading && rows.length === 0 && (
-          <p className="px-4 py-8 text-center text-sm text-slate-500">
-            {t("noResults")}
-          </p>
+          </select>
+        </div>
+      </Card>
+
+      <Card className="overflow-hidden p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50/70 text-xs uppercase tracking-wider text-slate-400">
+                <th className="px-5 py-3.5 text-start font-semibold">
+                  {t("companyNameAr")}
+                </th>
+                <th className="px-5 py-3.5 text-start font-semibold">{t("phone")}</th>
+                <th className="px-5 py-3.5 text-start font-semibold">{t("status")}</th>
+                <th className="px-5 py-3.5 text-end font-semibold">{t("actions")}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {rows.map((c) => (
+                <tr key={c.id} className="transition hover:bg-slate-50/70">
+                  <td className="px-5 py-3.5 font-semibold text-slate-900">
+                    {isAr ? c.companyNameAr : c.companyNameEn}
+                    {c.taxId && (
+                      <span className="block text-xs font-normal text-slate-400">
+                        {c.taxId}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3.5 text-slate-600" dir="ltr">
+                    {c.phone ?? "—"}
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <Badge tone={statusTone(c.status)}>{t(`status_${c.status}`)}</Badge>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <div className="flex justify-end gap-1">
+                      <Btn variant="ghost" onClick={() => openDetail(c.id)} className="px-3 py-1.5">
+                        {t("details")}
+                      </Btn>
+                      <Btn variant="ghost" onClick={() => openEdit(c)} className="px-3 py-1.5">
+                        {t("edit")}
+                      </Btn>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {loading ? (
+          <div className="flex justify-center py-12 text-slate-400">
+            <Spinner className="h-7 w-7" />
+          </div>
+        ) : (
+          rows.length === 0 && (
+            <EmptyState icon="clients" title={t("noResults")} />
+          )
         )}
-      </div>
+      </Card>
 
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <button
+        <div className="flex items-center justify-center gap-2">
+          <Btn
+            variant="outline"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-40"
+            className="px-3 py-1.5"
           >
-            ‹
-          </button>
-          <span className="text-sm text-slate-600">
+            <Icon name="chevronLeft" className="h-4 w-4" />
+          </Btn>
+          <span className="text-sm font-medium text-slate-600">
             {page} / {totalPages}
           </span>
-          <button
+          <Btn
+            variant="outline"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm disabled:opacity-40"
+            className="px-3 py-1.5"
           >
-            ›
-          </button>
+            <Icon name="chevronRight" className="h-4 w-4" />
+          </Btn>
         </div>
       )}
 
       {detail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">
-              {isAr ? detail.companyNameAr : detail.companyNameEn}
-            </h2>
-            <dl className="mt-4 space-y-2 text-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-lg font-extrabold tracking-tight text-slate-900">
+                {isAr ? detail.companyNameAr : detail.companyNameEn}
+              </h2>
+              <Badge tone={statusTone(detail.status)}>
+                {t(`status_${detail.status}`)}
+              </Badge>
+            </div>
+            <dl className="mt-5 space-y-2.5 text-sm">
               {detail.taxId && (
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">{t("taxId")}</dt>
-                  <dd className="font-medium">{detail.taxId}</dd>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-slate-400">{t("taxId")}</dt>
+                  <dd className="font-semibold text-slate-900">{detail.taxId}</dd>
                 </div>
               )}
               {detail.phone && (
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">{t("phone")}</dt>
-                  <dd className="font-medium" dir="ltr">{detail.phone}</dd>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-slate-400">{t("phone")}</dt>
+                  <dd className="font-semibold text-slate-900" dir="ltr">{detail.phone}</dd>
                 </div>
               )}
               {detail.email && (
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">{t("email")}</dt>
-                  <dd className="font-medium" dir="ltr">{detail.email}</dd>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-slate-400">{t("email")}</dt>
+                  <dd className="font-semibold text-slate-900" dir="ltr">{detail.email}</dd>
                 </div>
               )}
               {detail.address && (
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">{t("address")}</dt>
-                  <dd className="font-medium text-end">{detail.address}</dd>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-slate-400">{t("address")}</dt>
+                  <dd className="max-w-[60%] text-end font-semibold text-slate-900">{detail.address}</dd>
                 </div>
               )}
             </dl>
-            <h3 className="mt-5 font-semibold text-slate-900">{t("contacts")}</h3>
+            <h3 className="mt-6 text-sm font-bold uppercase tracking-wider text-slate-400">
+              {t("contacts")}
+            </h3>
             {detail.contacts.length === 0 ? (
-              <p className="mt-2 text-sm text-slate-500">—</p>
+              <p className="mt-2 text-sm text-slate-400">—</p>
             ) : (
               <ul className="mt-2 space-y-2">
                 {detail.contacts.map((c, i) => (
                   <li
                     key={i}
-                    className="rounded-lg bg-slate-50 px-3 py-2 text-sm"
+                    className="rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm ring-1 ring-slate-100"
                   >
-                    <span className="font-medium">{c.name}</span>
+                    <span className="font-semibold text-slate-900">{c.name}</span>
                     {c.isPrimary && (
-                      <span className="ms-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+                      <Badge tone="blue" className="ms-2">
                         {t("isPrimary")}
-                      </span>
+                      </Badge>
                     )}
                     <span className="block text-slate-500">
                       {[c.role, c.phone].filter(Boolean).join(" · ")}
@@ -380,127 +398,116 @@ export default function ClientsPage({
                 ))}
               </ul>
             )}
-            <div className="mt-6 flex justify-between">
-              <button
-                onClick={() => remove(detail)}
-                className="text-sm font-medium text-red-600 hover:text-red-800"
-              >
+            <div className="mt-6 flex items-center justify-between">
+              <Btn variant="danger" onClick={() => remove(detail)} className="px-3.5 py-2">
+                <Icon name="x" className="h-4 w-4" />
                 {t("delete")}
-              </button>
-              <button
-                onClick={() => setDetail(null)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-              >
+              </Btn>
+              <Btn variant="ghost" onClick={() => setDetail(null)}>
                 {t("cancel")}
-              </button>
+              </Btn>
             </div>
           </div>
         </div>
       )}
 
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]">
           <form
             onSubmit={submit}
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"
           >
-            <h2 className="text-lg font-bold text-slate-900">
+            <h2 className="text-lg font-extrabold tracking-tight text-slate-900">
               {modal.editing ? t("edit") : t("add")}
             </h2>
 
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label className={labelCls}>
-                {t("companyNameAr")} *
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <Field label={`${t("companyNameAr")} *`}>
                 <input required value={form.companyNameAr}
                   onChange={(e) => setForm({ ...form, companyNameAr: e.currentTarget.value })}
-                  className={inputCls} />
-              </label>
-              <label className={labelCls}>
-                {t("companyNameEn")} *
+                  className={fieldInput} />
+              </Field>
+              <Field label={`${t("companyNameEn")} *`}>
                 <input required value={form.companyNameEn}
                   onChange={(e) => setForm({ ...form, companyNameEn: e.currentTarget.value })}
-                  className={inputCls} />
-              </label>
-              <label className={labelCls}>
-                {t("taxId")}
+                  className={fieldInput} />
+              </Field>
+              <Field label={t("taxId")}>
                 <input value={form.taxId}
                   onChange={(e) => setForm({ ...form, taxId: e.currentTarget.value })}
-                  className={inputCls} dir="ltr" />
-              </label>
-              <label className={labelCls}>
-                {t("commercialReg")}
+                  className={fieldInput} dir="ltr" />
+              </Field>
+              <Field label={t("commercialReg")}>
                 <input value={form.commercialReg}
                   onChange={(e) => setForm({ ...form, commercialReg: e.currentTarget.value })}
-                  className={inputCls} dir="ltr" />
-              </label>
-              <label className={labelCls}>
-                {t("phone")}
+                  className={fieldInput} dir="ltr" />
+              </Field>
+              <Field label={t("phone")}>
                 <input inputMode="tel" value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.currentTarget.value })}
-                  className={inputCls} dir="ltr" />
-              </label>
-              <label className={labelCls}>
-                {t("email")}
+                  className={fieldInput} dir="ltr" />
+              </Field>
+              <Field label={t("email")}>
                 <input type="email" value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.currentTarget.value })}
-                  className={inputCls} dir="ltr" />
-              </label>
-              <label className={labelCls}>
-                {t("address")}
+                  className={fieldInput} dir="ltr" />
+              </Field>
+              <Field label={t("address")}>
                 <input value={form.address}
                   onChange={(e) => setForm({ ...form, address: e.currentTarget.value })}
-                  className={inputCls} />
-              </label>
-              <label className={labelCls}>
-                {t("status")}
+                  className={fieldInput} />
+              </Field>
+              <Field label={t("status")}>
                 <select value={form.status}
                   onChange={(e) => setForm({ ...form, status: e.currentTarget.value })}
-                  className={inputCls}>
+                  className={fieldInput}>
                   {["ACTIVE", "INACTIVE", "BLACKLISTED"].map((s) => (
                     <option key={s} value={s}>{t(`status_${s}`)}</option>
                   ))}
                 </select>
-              </label>
-              <label className={`${labelCls} sm:col-span-2`}>
-                {t("notes")}
+              </Field>
+              <Field label={t("notes")} className="sm:col-span-2">
                 <textarea value={form.notes} rows={2}
                   onChange={(e) => setForm({ ...form, notes: e.currentTarget.value })}
-                  className={inputCls} />
-              </label>
+                  className={fieldInput} />
+              </Field>
             </div>
 
             {!modal.editing && (
-              <div className="mt-5">
+              <div className="mt-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-slate-900">{t("contacts")}</h3>
-                  <button type="button"
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
+                    {t("contacts")}
+                  </h3>
+                  <Btn type="button" variant="ghost"
                     onClick={() => setForm({ ...form, contacts: [...form.contacts, { ...emptyContact }] })}
-                    className="text-sm font-medium text-slate-700 hover:text-slate-900">
-                    + {t("addContact")}
-                  </button>
+                    className="px-3 py-1.5">
+                    <Icon name="plus" className="h-4 w-4" />
+                    {t("addContact")}
+                  </Btn>
                 </div>
                 {form.contacts.map((c, i) => (
-                  <div key={i} className="mt-2 grid gap-2 rounded-lg bg-slate-50 p-3 sm:grid-cols-2">
+                  <div key={i} className="mt-2 grid gap-3 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100 sm:grid-cols-2">
                     <input placeholder={t("contactName")} value={c.name}
                       onChange={(e) => updateContact(i, { name: e.currentTarget.value })}
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                      className={`${fieldInput} !mt-0`} />
                     <input placeholder={t("role")} value={c.role}
                       onChange={(e) => updateContact(i, { role: e.currentTarget.value })}
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                      className={`${fieldInput} !mt-0`} />
                     <input placeholder={t("contactPhone")} value={c.phone} dir="ltr"
                       onChange={(e) => updateContact(i, { phone: e.currentTarget.value })}
-                      className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                      className={`${fieldInput} !mt-0`} />
                     <div className="flex items-center justify-between gap-2">
-                      <label className="flex items-center gap-2 text-sm text-slate-600">
+                      <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
                         <input type="checkbox" checked={c.isPrimary}
                           onChange={(e) => updateContact(i, { isPrimary: e.currentTarget.checked })}
-                          className="h-4 w-4" />
+                          className="h-4 w-4 rounded border-slate-300 accent-blue-700" />
                         {t("isPrimary")}
                       </label>
                       {form.contacts.length > 1 && (
                         <button type="button"
                           onClick={() => setForm({ ...form, contacts: form.contacts.filter((_, j) => j !== i) })}
-                          className="text-sm text-red-600">
+                          className="text-sm font-medium text-rose-600 hover:text-rose-800">
                           {t("remove")}
                         </button>
                       )}
@@ -511,20 +518,19 @@ export default function ClientsPage({
             )}
 
             {formError && (
-              <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p className="mt-4 rounded-xl bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700 ring-1 ring-rose-100">
                 {formError}
               </p>
             )}
 
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" onClick={() => setModal(null)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium">
+              <Btn type="button" variant="ghost" onClick={() => setModal(null)}>
                 {t("cancel")}
-              </button>
-              <button type="submit" disabled={busy}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              </Btn>
+              <Btn type="submit" disabled={busy}>
+                {busy ? <Spinner className="h-4 w-4" /> : <Icon name="check" className="h-4 w-4" />}
                 {t("save")}
-              </button>
+              </Btn>
             </div>
           </form>
         </div>

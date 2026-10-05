@@ -2,6 +2,17 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import {
+  Icon,
+  PageHeader,
+  Card,
+  Btn,
+  Badge,
+  Field,
+  fieldInput,
+  EmptyState,
+  Spinner,
+} from "../_ui";
 
 interface Shift { id: string; name: string; type: string; startTime: string; endTime: string; requiredStaff: number }
 interface Emp { id: string; fullNameAr: string; cardNumber: string }
@@ -13,9 +24,6 @@ interface Roster {
 }
 interface SiteOpt { id: string; name: string }
 interface Envelope { success: boolean; data?: unknown; error?: { message?: string } }
-
-const inputCls =
-  "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none";
 
 const SHIFT_TYPES = ["MORNING", "EVENING", "NIGHT", "DOUBLE", "CUSTOM"];
 
@@ -196,107 +204,175 @@ export default function RosterPage() {
   const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
-        <div className="flex gap-2">
-          <button onClick={() => setShowShifts((v) => !v)}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50">
-            {t("manageShifts")}
-          </button>
-          {siteId && !roster && (
-            <button onClick={() => setShowNew(true)}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-              {t("newRoster")}
-            </button>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("title")}
+        actions={
+          <>
+            <Btn variant="outline" onClick={() => setShowShifts((v) => !v)}>
+              <Icon name="clock" className="h-4 w-4" />
+              {t("manageShifts")}
+            </Btn>
+            {siteId && !roster && (
+              <Btn onClick={() => setShowNew(true)}>
+                <Icon name="plus" className="h-4 w-4" />
+                {t("newRoster")}
+              </Btn>
+            )}
+          </>
+        }
+      />
+
+      <Card className="p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label={t("site")} className="min-w-48">
+            <select
+              value={siteId}
+              onChange={(e) => { setSiteId(e.currentTarget.value); setRoster(null); }}
+              className={fieldInput}
+            >
+              <option value="">{t("selectSite")}</option>
+              {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </Field>
+          <Field label={t("week")}>
+            <input
+              type="date"
+              value={week}
+              onChange={(e) => e.currentTarget.value && setWeek(weekStart(e.currentTarget.value))}
+              className={fieldInput}
+            />
+          </Field>
+          {roster && (
+            <div className="flex items-center gap-2 pb-1">
+              <Badge tone={isDraft ? "amber" : "green"}>
+                {isDraft ? t("draft") : t("published")}
+              </Badge>
+              <span className="text-sm font-semibold text-slate-700">{roster.name}</span>
+            </div>
           )}
         </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-end gap-2">
-        <label className="block text-sm font-medium text-slate-700">
-          {t("site")}
-          <select value={siteId} onChange={(e) => { setSiteId(e.currentTarget.value); setRoster(null); }}
-            className="mt-1 block min-w-48 rounded-lg border border-slate-300 px-3 py-2 text-sm">
-            <option value="">{t("selectSite")}</option>
-            {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </label>
-        <label className="block text-sm font-medium text-slate-700">
-          {t("week")}
-          <input type="date" value={week} onChange={(e) => e.currentTarget.value && setWeek(weekStart(e.currentTarget.value))}
-            className="mt-1 block rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-        </label>
-        {roster && (
-          <span className={`rounded-full px-3 py-1 text-xs font-medium ${isDraft ? "bg-slate-200 text-slate-600" : "bg-green-100 text-green-700"}`}>
-            {isDraft ? t("draft") : t("published")} · {roster.name}
-          </span>
-        )}
-      </div>
+      </Card>
 
       {showShifts && siteId && (
-        <div className="mt-4 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-          <h3 className="font-semibold text-slate-900">{t("shifts")}</h3>
-          <ul className="mt-2 space-y-1.5">
-            {shifts.map((s) => (
-              <li key={s.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
-                <span>
-                  <strong>{s.name}</strong>
-                  <span className="ms-2 text-slate-500" dir="ltr">{s.startTime}–{s.endTime}</span>
-                  <span className="ms-2 text-xs text-slate-400">{t(`type_${s.type}`)} · {s.requiredStaff}</span>
-                </span>
-                <button onClick={() => deleteShift(s.id)} className="text-xs font-medium text-red-600">{t("delete")}</button>
-              </li>
-            ))}
-            {shifts.length === 0 && <li className="text-sm text-slate-500">—</li>}
-          </ul>
-          <form onSubmit={addShift} className="mt-3 grid gap-2 sm:grid-cols-6">
-            <input required placeholder={t("shiftName")} value={shiftForm.name}
+        <Card>
+          <h3 className="text-[15px] font-bold text-slate-900">{t("shifts")}</h3>
+          {shifts.length === 0 ? (
+            <EmptyState icon="clock" title={t("noShifts")} />
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {shifts.map((s) => (
+                <li
+                  key={s.id}
+                  className="flex items-center justify-between gap-2 rounded-xl bg-slate-50 px-3.5 py-2.5 text-sm"
+                >
+                  <span className="min-w-0">
+                    <strong className="font-semibold text-slate-900">{s.name}</strong>
+                    <span className="ms-2 tabular-nums text-slate-500" dir="ltr">
+                      {s.startTime}–{s.endTime}
+                    </span>
+                    <Badge tone="slate" className="ms-2">
+                      {t(`type_${s.type}`)} · {s.requiredStaff}
+                    </Badge>
+                  </span>
+                  <Btn
+                    variant="ghost"
+                    onClick={() => deleteShift(s.id)}
+                    className="shrink-0 px-2.5 py-1.5 text-[13px] text-rose-600 hover:bg-rose-50"
+                  >
+                    {t("delete")}
+                  </Btn>
+                </li>
+              ))}
+            </ul>
+          )}
+          <form onSubmit={addShift} className="mt-4 grid gap-2.5 sm:grid-cols-6">
+            <input
+              required
+              placeholder={t("shiftName")}
+              value={shiftForm.name}
               onChange={(e) => setShiftForm({ ...shiftForm, name: e.currentTarget.value })}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm sm:col-span-2" />
-            <select value={shiftForm.type} onChange={(e) => setShiftForm({ ...shiftForm, type: e.currentTarget.value })}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+              className={fieldInput + " mt-0 sm:col-span-2"}
+            />
+            <select
+              value={shiftForm.type}
+              onChange={(e) => setShiftForm({ ...shiftForm, type: e.currentTarget.value })}
+              className={fieldInput + " mt-0"}
+            >
               {SHIFT_TYPES.map((st) => <option key={st} value={st}>{t(`type_${st}`)}</option>)}
             </select>
-            <input type="time" value={shiftForm.startTime} dir="ltr"
+            <input
+              type="time"
+              value={shiftForm.startTime}
+              dir="ltr"
               onChange={(e) => setShiftForm({ ...shiftForm, startTime: e.currentTarget.value })}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-            <input type="time" value={shiftForm.endTime} dir="ltr"
+              className={fieldInput + " mt-0"}
+            />
+            <input
+              type="time"
+              value={shiftForm.endTime}
+              dir="ltr"
               onChange={(e) => setShiftForm({ ...shiftForm, endTime: e.currentTarget.value })}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-            <button type="submit" disabled={busy}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+              className={fieldInput + " mt-0"}
+            />
+            <Btn type="submit" disabled={busy}>
+              {busy && <Spinner className="h-4 w-4" />}
               {t("addShift")}
-            </button>
+            </Btn>
           </form>
-        </div>
+        </Card>
       )}
 
       {msg && (
-        <p className={`mt-4 rounded-lg px-3 py-2 text-sm ${msg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+        <p className={`rounded-xl px-3.5 py-2.5 text-sm font-medium ${
+          msg.ok ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+        }`}>
           {msg.text}
         </p>
       )}
 
       {siteId && !roster && !showNew && (
-        <p className="mt-8 text-center text-sm text-slate-500">{t("noRoster")}</p>
+        <Card>
+          <EmptyState icon="roster" title={t("noRoster")} />
+        </Card>
       )}
 
       {showNew && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <form onSubmit={createRoster} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">{t("newRoster")}</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-[2px]">
+          <form
+            onSubmit={createRoster}
+            className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-lg font-extrabold tracking-tight text-slate-900">
+                {t("newRoster")}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowNew(false)}
+                className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="close"
+              >
+                <Icon name="x" className="h-5 w-5" />
+              </button>
+            </div>
             <p className="mt-1 text-sm text-slate-500" dir="ltr">{week} → {weekEnd}</p>
-            <label className="mt-4 block text-sm font-medium text-slate-700">
-              {t("rosterName")}
-              <input value={newName} onChange={(e) => setNewName(e.currentTarget.value)}
-                placeholder={week} className={inputCls} />
-            </label>
+            <Field label={t("rosterName")} className="mt-4">
+              <input
+                value={newName}
+                onChange={(e) => setNewName(e.currentTarget.value)}
+                placeholder={week}
+                className={fieldInput}
+              />
+            </Field>
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowNew(false)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium">{t("cancel")}</button>
-              <button type="submit" disabled={busy}
-                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{t("create")}</button>
+              <Btn variant="ghost" type="button" onClick={() => setShowNew(false)}>
+                {t("cancel")}
+              </Btn>
+              <Btn type="submit" disabled={busy}>
+                {busy && <Spinner className="h-4 w-4" />}
+                {t("create")}
+              </Btn>
             </div>
           </form>
         </div>
@@ -304,71 +380,80 @@ export default function RosterPage() {
 
       {roster && (
         <>
-          <div className="mt-4 overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500">
-                  <th className="sticky start-0 bg-white px-4 py-3 text-start font-medium">—</th>
-                  {days.map((d, i) => (
-                    <th key={d} className="px-2 py-3 text-center font-medium">
-                      <span className="block text-xs">{dayNames[i]}</span>
-                      <span className="block text-xs font-normal" dir="ltr">{d.slice(5)}</span>
+          <Card className="overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50/80 text-[13px] font-semibold text-slate-500">
+                    <th className="sticky start-0 bg-slate-50 px-4 py-3 text-start">
+                      —
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {employees.map((e) => (
-                  <tr key={e.id} className="border-b border-slate-100">
-                    <td className="sticky start-0 bg-white px-4 py-2 font-medium text-slate-900">
-                      {e.fullNameAr}
-                      <span className="block font-mono text-xs font-normal text-slate-500">{e.cardNumber}</span>
-                    </td>
-                    {days.map((d) => {
-                      const key = `${e.id}|${d}`;
-                      return (
-                        <td key={d} className="px-1 py-1.5 text-center">
-                          <select
-                            value={grid[key] ?? ""}
-                            disabled={!isDraft}
-                            onChange={(ev) => setGrid({ ...grid, [key]: ev.currentTarget.value })}
-                            className="w-full min-w-24 rounded-lg border border-slate-200 px-1 py-1.5 text-xs disabled:bg-slate-50"
-                          >
-                            <option value="">—</option>
-                            {shifts.map((s) => (
-                              <option key={s.id} value={s.id}>{s.name}</option>
-                            ))}
-                          </select>
-                        </td>
-                      );
-                    })}
+                    {days.map((d, i) => (
+                      <th key={d} className="px-2 py-3 text-center">
+                        <span className="block text-[13px] font-semibold">{dayNames[i]}</span>
+                        <span className="block text-xs font-normal text-slate-400" dir="ltr">
+                          {d.slice(5)}
+                        </span>
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {employees.map((e) => (
+                    <tr key={e.id} className="transition hover:bg-slate-50/70">
+                      <td className="sticky start-0 bg-white px-4 py-2 font-semibold text-slate-900">
+                        {e.fullNameAr}
+                        <span className="block font-mono text-xs font-normal text-slate-400">
+                          {e.cardNumber}
+                        </span>
+                      </td>
+                      {days.map((d) => {
+                        const key = `${e.id}|${d}`;
+                        return (
+                          <td key={d} className="px-1 py-1.5 text-center">
+                            <select
+                              value={grid[key] ?? ""}
+                              disabled={!isDraft}
+                              onChange={(ev) => setGrid({ ...grid, [key]: ev.currentTarget.value })}
+                              className="w-full min-w-24 rounded-xl border border-slate-200 bg-white px-1.5 py-1.5 text-xs text-slate-700 disabled:bg-slate-50 focus:border-blue-600 focus:outline-none"
+                            >
+                              <option value="">—</option>
+                              {shifts.map((s) => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ))}
+                            </select>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             {employees.length === 0 && (
-              <p className="px-4 py-8 text-center text-sm text-slate-500">{t("noEmployees")}</p>
+              <EmptyState icon="users" title={t("noEmployees")} />
             )}
-          </div>
+          </Card>
+
           {shifts.length === 0 && employees.length > 0 && (
-            <p className="mt-2 text-sm text-amber-700">{t("noShifts")}</p>
+            <p className="rounded-xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-800">
+              {t("noShifts")}
+            </p>
           )}
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {isDraft && (
               <>
-                <button onClick={save} disabled={busy}
-                  className="rounded-lg bg-slate-900 px-6 py-2.5 text-sm font-medium text-white disabled:opacity-50">
+                <Btn onClick={save} disabled={busy} className="px-6">
+                  {busy && <Spinner className="h-4 w-4" />}
                   {t("save")}
-                </button>
-                <button onClick={publish} disabled={busy}
-                  className="rounded-lg border border-green-600 px-6 py-2.5 text-sm font-medium text-green-700 disabled:opacity-50">
+                </Btn>
+                <Btn variant="success" onClick={publish} disabled={busy} className="px-6">
                   {t("publish")}
-                </button>
-                <button onClick={remove}
-                  className="rounded-lg border border-red-300 px-4 py-2.5 text-sm font-medium text-red-600">
+                </Btn>
+                <Btn variant="danger" onClick={remove} className="px-4">
                   {t("delete")}
-                </button>
+                </Btn>
               </>
             )}
           </div>

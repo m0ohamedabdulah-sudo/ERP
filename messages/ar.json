@@ -167,7 +167,9 @@
     "deleteBlocked": "الموقع عليه أفراد نشطين — انقلهم الأول",
     "saved": "تم الحفظ",
     "saveError": "تعذر الحفظ — راجع البيانات",
-    "delete": "حذف"
+    "delete": "حذف",
+    "active": "نشط",
+    "inactive": "غير نشط"
   },
   "attendance": {
     "title": "الحضور",

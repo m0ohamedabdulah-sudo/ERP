@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import {
+  PageHeader, Card, Btn, Badge, Field, fieldInput, EmptyState, Icon,
+} from "../_ui";
+
+type BadgeTone = "green" | "red" | "amber" | "blue" | "slate" | "purple";
 
 interface Envelope { success: boolean; data?: unknown; error?: { message?: string } }
 interface Emp { id: string; fullNameAr: string; cardNumber: string }
@@ -13,14 +18,11 @@ interface EmpDoc {
   documentType?: { nameAr: string; nameEn: string };
 }
 
-const inputCls = "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none";
-const labelCls = "block text-sm font-medium text-slate-700";
-
-const STATUS_COLORS: Record<string, string> = {
-  VALID: "bg-green-100 text-green-700",
-  EXPIRING: "bg-amber-100 text-amber-700",
-  EXPIRED: "bg-red-100 text-red-700",
-  MISSING: "bg-slate-200 text-slate-600",
+const STATUS_TONES: Record<string, BadgeTone> = {
+  VALID: "green",
+  EXPIRING: "amber",
+  EXPIRED: "red",
+  MISSING: "slate",
 };
 
 type Tab = "employees" | "types";
@@ -173,42 +175,54 @@ export default function DocumentsPage() {
     dt ? (locale === "ar" ? dt.nameAr : dt.nameEn) : "—";
 
   return (
-    <div>
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
-        {tab === "employees" && employee && (
-          <button onClick={() => openDocModal()}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">{t("addDocument")}</button>
-        )}
-        {tab === "types" && (
-          <button onClick={() => openTypeModal()}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">{t("addType")}</button>
-        )}
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title={t("title")}
+        actions={
+          <>
+            {tab === "employees" && employee && (
+              <Btn variant="primary" onClick={() => openDocModal()}>
+                <Icon name="plus" className="h-4 w-4" />{t("addDocument")}
+              </Btn>
+            )}
+            {tab === "types" && (
+              <Btn variant="primary" onClick={() => openTypeModal()}>
+                <Icon name="plus" className="h-4 w-4" />{t("addType")}
+              </Btn>
+            )}
+          </>
+        }
+      />
 
-      <div className="mt-4 flex gap-1 rounded-xl bg-slate-100 p-1 w-fit">
+      <div className="flex w-fit gap-1 rounded-2xl border border-slate-200/70 bg-white p-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.05)]">
         {(["employees", "types"] as Tab[]).map((tb) => (
           <button key={tb} onClick={() => setTab(tb)}
-            className={`rounded-lg px-5 py-2 text-sm font-medium ${tab === tb ? "bg-white shadow-sm text-slate-900" : "text-slate-500"}`}>
+            className={`rounded-xl px-5 py-2 text-sm font-semibold transition ${
+              tab === tb ? "bg-slate-900 text-white shadow" : "text-slate-500 hover:text-slate-800"
+            }`}>
             {t(tb === "employees" ? "tabEmployees" : "tabTypes")}
           </button>
         ))}
       </div>
 
-      {msg && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{msg}</p>}
+      {msg && (
+        <div className="flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700 ring-1 ring-inset ring-rose-200">
+          <Icon name="x" className="h-4 w-4 shrink-0" />{msg}
+        </div>
+      )}
 
       {tab === "employees" && (
-        <div className="mt-4">
+        <div className="space-y-5">
           <div className="relative max-w-md">
             <input value={empQuery} onChange={(e) => setEmpQuery(e.currentTarget.value)}
               placeholder={t("searchEmployee")}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              className={fieldInput} />
             {empResults.length > 0 && (
-              <ul className="absolute z-10 mt-1 w-full rounded-lg bg-white shadow-lg ring-1 ring-slate-200">
+              <ul className="absolute z-10 mt-2 w-full overflow-hidden rounded-2xl bg-white py-1 shadow-xl ring-1 ring-slate-200">
                 {empResults.map((e) => (
                   <li key={e.id}><button onClick={() => pickEmployee(e)}
-                    className="block w-full px-3 py-2 text-start text-sm hover:bg-slate-50">
-                    {e.fullNameAr} <span className="font-mono text-xs text-slate-400">{e.cardNumber}</span>
+                    className="block w-full px-4 py-2.5 text-start text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    {e.fullNameAr} <span className="font-mono text-xs font-normal text-slate-400">{e.cardNumber}</span>
                   </button></li>
                 ))}
               </ul>
@@ -216,94 +230,119 @@ export default function DocumentsPage() {
           </div>
 
           {!employee && (
-            <p className="mt-8 text-center text-sm text-slate-500">{t("selectEmployee")}</p>
+            <EmptyState icon="documents" title={t("selectEmployee")} />
           )}
 
           {employee && (
-            <div className="mt-4 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-              <h3 className="font-semibold text-slate-900">{employee.fullNameAr}
-                <span className="ms-2 font-mono text-xs font-normal text-slate-400">{employee.cardNumber}</span></h3>
-              {docs.length === 0
-                ? <p className="mt-2 text-sm text-slate-500">{t("noDocuments")}</p>
-                : (
-                  <ul className="mt-3 space-y-2">
-                    {docs.map((d) => (
-                      <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2.5">
-                        <div className="text-sm">
-                          <strong>{typeName(d.documentType)}</strong>
-                          {d.documentNo && <span className="ms-2 font-mono text-xs text-slate-500" dir="ltr">{d.documentNo}</span>}
-                          <span className="ms-2 text-xs text-slate-500" dir="ltr">
-                            {[d.issuedAt?.slice(0, 10), d.expiresAt?.slice(0, 10)].filter(Boolean).join(" → ")}
-                          </span>
-                          <span className={`ms-2 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[d.status] ?? "bg-slate-200 text-slate-600"}`}>
-                            {t(`status_${d.status}`)}
-                          </span>
-                          {d.verifiedAt && <span className="ms-1 text-xs text-green-700">✓ {t("verified")}</span>}
-                        </div>
-                        <div className="flex gap-2">
-                          {!d.verifiedAt && (
-                            <button onClick={() => verifyDoc(d.id)} className="text-xs font-medium text-green-700">{t("verify")}</button>
+            <Card>
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-[15px] font-bold text-slate-900">
+                  {employee.fullNameAr}
+                  <span className="ms-2 font-mono text-xs font-normal text-slate-400">{employee.cardNumber}</span>
+                </h3>
+                <Badge tone="blue">{docs.length}</Badge>
+              </div>
+              {docs.length === 0 ? (
+                <EmptyState icon="documents" title={t("noDocuments")} />
+              ) : (
+                <ul className="mt-4 space-y-2">
+                  {docs.map((d) => (
+                    <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                      <div className="min-w-0 text-sm">
+                        <span className="font-bold text-slate-900">{typeName(d.documentType)}</span>
+                        {d.documentNo && <span className="ms-2 font-mono text-xs text-slate-500" dir="ltr">{d.documentNo}</span>}
+                        <span className="ms-2 text-xs text-slate-500" dir="ltr">
+                          {[d.issuedAt?.slice(0, 10), d.expiresAt?.slice(0, 10)].filter(Boolean).join(" → ")}
+                        </span>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          <Badge tone={STATUS_TONES[d.status] ?? "slate"}>{t(`status_${d.status}`)}</Badge>
+                          {d.verifiedAt && (
+                            <Badge tone="green"><Icon name="check" className="h-3 w-3 me-0.5" />{t("verified")}</Badge>
                           )}
-                          <button onClick={() => openDocModal(d)} className="text-xs font-medium text-slate-600">{t("editDocument")}</button>
-                          <button onClick={() => deleteDoc(d.id)} className="text-xs font-medium text-red-600">{t("delete")}</button>
                         </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-            </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {!d.verifiedAt && (
+                          <Btn variant="ghost" onClick={() => verifyDoc(d.id)} className="!px-2.5 !py-1.5 !text-xs !text-emerald-700">
+                            {t("verify")}
+                          </Btn>
+                        )}
+                        <Btn variant="ghost" onClick={() => openDocModal(d)} className="!px-2.5 !py-1.5 !text-xs">
+                          {t("editDocument")}
+                        </Btn>
+                        <Btn variant="ghost" onClick={() => deleteDoc(d.id)} className="!px-2.5 !py-1.5 !text-xs !text-rose-700">
+                          {t("delete")}
+                        </Btn>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
           )}
         </div>
       )}
 
       {tab === "types" && (
-        <div className="mt-4 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-          <ul className="space-y-2">
-            {types.map((dt) => (
-              <li key={dt.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2.5 text-sm">
-                <div>
-                  <strong>{locale === "ar" ? dt.nameAr : dt.nameEn}</strong>
-                  <span className="ms-2 font-mono text-xs text-slate-400">{dt.code}</span>
-                  {dt.requiredForHire && <span className="ms-2 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">{t("requiredForHire")}</span>}
-                  {dt.validityMonths != null && <span className="ms-2 text-xs text-slate-500">{dt.validityMonths}m</span>}
-                </div>
-                <button onClick={() => openTypeModal(dt)} className="text-xs font-medium text-slate-600">{t("editType")}</button>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <Card>
+          {types.length === 0 ? (
+            <EmptyState icon="documents" title={t("noDocuments")} />
+          ) : (
+            <ul className="space-y-2">
+              {types.map((dt) => (
+                <li key={dt.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-4 py-3 text-sm">
+                  <div className="min-w-0">
+                    <span className="font-bold text-slate-900">{locale === "ar" ? dt.nameAr : dt.nameEn}</span>
+                    <span className="ms-2 font-mono text-xs text-slate-400" dir="ltr">{dt.code}</span>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      {dt.requiredForHire && <Badge tone="blue">{t("requiredForHire")}</Badge>}
+                      {dt.validityMonths != null && <Badge tone="slate">{dt.validityMonths}m</Badge>}
+                    </div>
+                  </div>
+                  <Btn variant="ghost" onClick={() => openTypeModal(dt)} className="!px-2.5 !py-1.5 !text-xs">
+                    {t("editType")}
+                  </Btn>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
       )}
 
       {showDocModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form onSubmit={saveDoc} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">{editingDoc ? t("editDocument") : t("addDocument")}</h2>
+            <h2 className="text-lg font-extrabold tracking-tight text-slate-900">{editingDoc ? t("editDocument") : t("addDocument")}</h2>
             <div className="mt-4 grid gap-4">
-              <label className={labelCls}>{t("docType")}
+              <Field label={t("docType")}>
                 <select required value={docForm.documentTypeId}
-                  onChange={(e) => setDocForm({ ...docForm, documentTypeId: e.currentTarget.value })} className={inputCls}>
+                  onChange={(e) => setDocForm({ ...docForm, documentTypeId: e.currentTarget.value })} className={fieldInput}>
                   <option value="">—</option>
                   {types.map((dt) => <option key={dt.id} value={dt.id}>{locale === "ar" ? dt.nameAr : dt.nameEn}</option>)}
-                </select></label>
-              <label className={labelCls}>{t("docNo")}
+                </select>
+              </Field>
+              <Field label={t("docNo")}>
                 <input value={docForm.documentNo} dir="ltr"
-                  onChange={(e) => setDocForm({ ...docForm, documentNo: e.currentTarget.value })} className={inputCls} /></label>
+                  onChange={(e) => setDocForm({ ...docForm, documentNo: e.currentTarget.value })} className={fieldInput} />
+              </Field>
               <div className="grid grid-cols-2 gap-4">
-                <label className={labelCls}>{t("issuedAt")}
+                <Field label={t("issuedAt")}>
                   <input type="date" value={docForm.issuedAt}
-                    onChange={(e) => setDocForm({ ...docForm, issuedAt: e.currentTarget.value })} className={inputCls} /></label>
-                <label className={labelCls}>{t("expiresAt")}
+                    onChange={(e) => setDocForm({ ...docForm, issuedAt: e.currentTarget.value })} className={fieldInput} />
+                </Field>
+                <Field label={t("expiresAt")}>
                   <input type="date" value={docForm.expiresAt}
-                    onChange={(e) => setDocForm({ ...docForm, expiresAt: e.currentTarget.value })} className={inputCls} /></label>
+                    onChange={(e) => setDocForm({ ...docForm, expiresAt: e.currentTarget.value })} className={fieldInput} />
+                </Field>
               </div>
-              <label className={labelCls}>{t("notes")}
+              <Field label={t("notes")}>
                 <input value={docForm.notes}
-                  onChange={(e) => setDocForm({ ...docForm, notes: e.currentTarget.value })} className={inputCls} /></label>
+                  onChange={(e) => setDocForm({ ...docForm, notes: e.currentTarget.value })} className={fieldInput} />
+              </Field>
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowDocModal(false)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium">{t("cancel")}</button>
-              <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">{t("save")}</button>
+              <Btn variant="outline" type="button" onClick={() => setShowDocModal(false)}>{t("cancel")}</Btn>
+              <Btn variant="primary" type="submit">{t("save")}</Btn>
             </div>
           </form>
         </div>
@@ -312,29 +351,34 @@ export default function DocumentsPage() {
       {showTypeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form onSubmit={saveType} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">{editingType ? t("editType") : t("addType")}</h2>
+            <h2 className="text-lg font-extrabold tracking-tight text-slate-900">{editingType ? t("editType") : t("addType")}</h2>
             <div className="mt-4 grid gap-4">
-              <label className={labelCls}>Code
+              <Field label="Code">
                 <input required value={typeForm.code} dir="ltr"
-                  onChange={(e) => setTypeForm({ ...typeForm, code: e.currentTarget.value })} className={inputCls} /></label>
-              <label className={labelCls}>{t("typeNameAr")}
+                  onChange={(e) => setTypeForm({ ...typeForm, code: e.currentTarget.value })} className={fieldInput} />
+              </Field>
+              <Field label={t("typeNameAr")}>
                 <input required value={typeForm.nameAr}
-                  onChange={(e) => setTypeForm({ ...typeForm, nameAr: e.currentTarget.value })} className={inputCls} /></label>
-              <label className={labelCls}>{t("typeNameEn")}
+                  onChange={(e) => setTypeForm({ ...typeForm, nameAr: e.currentTarget.value })} className={fieldInput} />
+              </Field>
+              <Field label={t("typeNameEn")}>
                 <input required value={typeForm.nameEn} dir="ltr"
-                  onChange={(e) => setTypeForm({ ...typeForm, nameEn: e.currentTarget.value })} className={inputCls} /></label>
-              <label className={labelCls}>{t("validityMonths")}
+                  onChange={(e) => setTypeForm({ ...typeForm, nameEn: e.currentTarget.value })} className={fieldInput} />
+              </Field>
+              <Field label={t("validityMonths")}>
                 <input type="number" min="1" value={typeForm.validityMonths} dir="ltr"
-                  onChange={(e) => setTypeForm({ ...typeForm, validityMonths: e.currentTarget.value })} className={inputCls} /></label>
-              <label className="flex items-center gap-2 text-sm text-slate-700">
+                  onChange={(e) => setTypeForm({ ...typeForm, validityMonths: e.currentTarget.value })} className={fieldInput} />
+              </Field>
+              <label className="flex cursor-pointer items-center gap-2.5 rounded-xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
                 <input type="checkbox" checked={typeForm.requiredForHire}
-                  onChange={(e) => setTypeForm({ ...typeForm, requiredForHire: e.currentTarget.checked })} />
-                {t("requiredForHire")}</label>
+                  onChange={(e) => setTypeForm({ ...typeForm, requiredForHire: e.currentTarget.checked })}
+                  className="h-4 w-4 rounded accent-blue-700" />
+                {t("requiredForHire")}
+              </label>
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowTypeModal(false)}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium">{t("cancel")}</button>
-              <button type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">{t("save")}</button>
+              <Btn variant="outline" type="button" onClick={() => setShowTypeModal(false)}>{t("cancel")}</Btn>
+              <Btn variant="primary" type="submit">{t("save")}</Btn>
             </div>
           </form>
         </div>
