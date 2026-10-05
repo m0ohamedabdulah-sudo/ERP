@@ -93,7 +93,9 @@
     "navRoster": "الروستر",
     "navAnalytics": "التحليلات",
     "navDocuments": "المستندات",
-    "navRecruitment": "التوظيف"
+    "navRecruitment": "التوظيف",
+    "navUsers": "المستخدمين",
+    "navAudit": "سجل التدقيق"
   },
   "employees": {
     "title": "الأفراد",
@@ -515,5 +517,51 @@
     "st_REJECTED": "مرفوض",
     "st_HIRED": "تم تعيينه",
     "pipeline": "خط التوظيف"
+  },
+  "users": {
+    "title": "المستخدمين والأدوار",
+    "tabUsers": "المستخدمين",
+    "tabRoles": "الأدوار",
+    "search": "بحث…",
+    "addUser": "إضافة مستخدم",
+    "email": "البريد",
+    "password": "كلمة المرور",
+    "fullName": "الاسم الكامل",
+    "phone": "الهاتف",
+    "role": "الدور",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "edit": "تعديل",
+    "deactivate": "إيقاف",
+    "activate": "تفعيل",
+    "setPassword": "تعيين كلمة مرور جديدة",
+    "leaveBlank": "اتركه فارغاً للإبقاء كما هو",
+    "deactivateConfirm": "إيقاف هذا المستخدم؟ لن يتمكن من تسجيل الدخول.",
+    "activateConfirm": "تفعيل هذا المستخدم؟",
+    "allRoles": "كل الأدوار",
+    "permissions": "الصلاحيات",
+    "savePermissions": "حفظ الصلاحيات",
+    "protectedRole": "دور نظام — لا يمكن تعديله",
+    "usersCount": "مستخدم",
+    "noUsers": "لا يوجد مستخدمين"
+  },
+  "audit": {
+    "title": "سجل التدقيق",
+    "module": "الوحدة",
+    "action": "الإجراء",
+    "user": "المستخدم",
+    "from": "من",
+    "to": "إلى",
+    "allModules": "كل الوحدات",
+    "filter": "تصفية",
+    "clear": "مسح",
+    "time": "الوقت",
+    "details": "التفاصيل",
+    "oldValue": "قبل",
+    "newValue": "بعد",
+    "noLogs": "لا توجد سجلات",
+    "system": "النظام"
   }
 }

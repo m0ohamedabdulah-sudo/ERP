@@ -1,8 +1,6 @@
 import { ok, paginated } from "../../lib/api-response";
-import { requirePermission } from "../../lib/auth";
+import { requireCatalogPermission } from "../../lib/catalog-sync";
 import { routeParam } from "../../lib/route-params";
-import { prisma } from "../../lib/prisma";
-import { ensureRolesAndPermissions } from "../../lib/bootstrap";
 import { createShiftSchema, updateShiftSchema } from "./shift.schema";
 import {
   createRosterSchema,
@@ -26,25 +24,8 @@ import {
 
 /** Thin HTTP adapter for shifts + rosters. */
 
-/**
- * Ensure the permission catalog (incl. roster.view/roster.manage) exists.
- * Runs once per server instance; uses Prisma upserts so it works on any
- * database without raw-SQL data migrations.
- */
-let catalogSync: Promise<string> | null = null;
-async function ensureCatalog(): Promise<void> {
-  if (!catalogSync) {
-    catalogSync = ensureRolesAndPermissions(prisma).catch((err: unknown) => {
-      catalogSync = null; // allow retry on the next request
-      throw err;
-    });
-  }
-  await catalogSync;
-}
-
 async function can(permission: "roster.view" | "roster.manage", req: Request) {
-  await ensureCatalog();
-  return requirePermission(req, permission);
+  return requireCatalogPermission(req, permission);
 }
 
 // --- Shifts (nested under sites) ---

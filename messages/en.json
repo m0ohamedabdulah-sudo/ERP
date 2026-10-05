@@ -93,7 +93,9 @@
     "navRoster": "Roster",
     "navAnalytics": "Analytics",
     "navDocuments": "Documents",
-    "navRecruitment": "Recruitment"
+    "navRecruitment": "Recruitment",
+    "navUsers": "Users",
+    "navAudit": "Audit log"
   },
   "employees": {
     "title": "Personnel",
@@ -515,5 +517,51 @@
     "st_REJECTED": "Rejected",
     "st_HIRED": "Hired",
     "pipeline": "Pipeline"
+  },
+  "users": {
+    "title": "Users & roles",
+    "tabUsers": "Users",
+    "tabRoles": "Roles",
+    "search": "Search…",
+    "addUser": "Add user",
+    "email": "Email",
+    "password": "Password",
+    "fullName": "Full name",
+    "phone": "Phone",
+    "role": "Role",
+    "active": "Active",
+    "inactive": "Inactive",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "deactivate": "Deactivate",
+    "activate": "Activate",
+    "setPassword": "Set new password",
+    "leaveBlank": "Leave blank to keep unchanged",
+    "deactivateConfirm": "Deactivate this user? They will not be able to sign in.",
+    "activateConfirm": "Activate this user?",
+    "allRoles": "All roles",
+    "permissions": "Permissions",
+    "savePermissions": "Save permissions",
+    "protectedRole": "System role — cannot be modified",
+    "usersCount": "users",
+    "noUsers": "No users"
+  },
+  "audit": {
+    "title": "Audit log",
+    "module": "Module",
+    "action": "Action",
+    "user": "User",
+    "from": "From",
+    "to": "To",
+    "allModules": "All modules",
+    "filter": "Filter",
+    "clear": "Clear",
+    "time": "Time",
+    "details": "Details",
+    "oldValue": "Before",
+    "newValue": "After",
+    "noLogs": "No audit entries",
+    "system": "System"
   }
 }
