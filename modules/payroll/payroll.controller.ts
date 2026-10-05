@@ -16,6 +16,7 @@ import {
   deleteAdjustment,
   finalizePayroll,
   setPayoutMethod,
+  listPayrollArchives,
 } from "./payroll.service";
 
 /**
@@ -77,4 +78,9 @@ export async function payout(req: Request, ctx?: unknown): Promise<Response> {
   const input = payoutMethodSchema.parse(await req.json());
   await setPayoutMethod(actor, id, input.payoutMethod, input.bankAccount, req);
   return ok({ updated: true });
+}
+
+export async function archives(req: Request, _ctx?: unknown): Promise<Response> {
+  await requirePermission(req, "payroll.view");
+  return ok(await listPayrollArchives());
 }

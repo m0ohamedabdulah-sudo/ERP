@@ -90,7 +90,8 @@
     "navContracts": "العقود",
     "navInvoices": "الفواتير",
     "navPayroll": "المرتبات",
-    "navRoster": "الروستر"
+    "navRoster": "الروستر",
+    "navAnalytics": "التحليلات"
   },
   "employees": {
     "title": "الأفراد",
@@ -366,7 +367,13 @@
     "cancel": "إلغاء",
     "saveError": "تعذر الحفظ — راجع البيانات",
     "deleteEffectConfirm": "حذف هذا المؤثر؟",
-    "byMethod": "حسب طريقة الصرف"
+    "byMethod": "حسب طريقة الصرف",
+    "archives": "أرشيف المرتبات",
+    "archiveMonth": "الشهر",
+    "archiveEmployees": "الأفراد",
+    "archiveTotal": "إجمالي الصافي",
+    "archiveStatus": "الحالة",
+    "noArchives": "لا توجد مرتبات محفوظة بعد"
   },
   "roster": {
     "title": "الروستر",
@@ -402,5 +409,42 @@
     "type_NIGHT": "ليلية",
     "type_DOUBLE": "مضاعفة",
     "type_CUSTOM": "مخصصة"
+  },
+  "analytics": {
+    "title": "التحليلات",
+    "tabOperations": "العمليات",
+    "tabFinance": "المالية",
+    "tabHR": "الموارد البشرية",
+    "from": "من",
+    "to": "إلى",
+    "site": "الموقع",
+    "allSites": "كل المواقع",
+    "apply": "عرض",
+    "present": "حاضر",
+    "absent": "غائب",
+    "attendanceTrend": "الحضور اليومي",
+    "siteCoverage": "تغطية المواقع (اليوم)",
+    "required": "المطلوب",
+    "active": "النشط",
+    "presentToday": "حاضر",
+    "shortage": "العجز",
+    "noData": "لا توجد بيانات لهذه الفترة",
+    "payroll": "المرتبات",
+    "invoiced": "الفواتير",
+    "collected": "المحصل",
+    "outstanding": "مستحقات متأخرة",
+    "monthlyOverview": "نظرة شهرية",
+    "totalPayroll": "إجمالي المرتبات",
+    "totalInvoiced": "إجمالي الفواتير",
+    "totalCollected": "إجمالي المحصل",
+    "headcountByStatus": "الأفراد حسب الحالة",
+    "headcountBySite": "الأفراد حسب الموقع",
+    "expiringDocuments": "مستندات تنتهي خلال 30 يوم",
+    "expiredDocuments": "مستندات منتهية",
+    "employee": "الفرد",
+    "document": "المستند",
+    "expiresAt": "ينتهي في",
+    "totalActive": "الأفراد النشطين",
+    "months": "شهور"
   }
 }

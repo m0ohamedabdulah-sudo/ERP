@@ -56,6 +56,8 @@ export default function PayrollPage() {
   // payout modal
   const [payEmp, setPayEmp] = useState<PayrollRow | null>(null);
   const [payForm, setPayForm] = useState({ payoutMethod: "CASH", bankAccount: "" });
+  const [archives, setArchives] = useState<{ year: number; month: number; status: string; employees: number; totalNet: number }[]>([]);
+  const [showArchives, setShowArchives] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,6 +75,12 @@ export default function PayrollPage() {
   }, [year, month, siteId]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    fetch("/api/v1/payroll/archives").then((r) => r.json()).then((j: unknown) => {
+      const b = j as Envelope;
+      if (b.success) setArchives((b.data as typeof archives) ?? []);
+    }).catch(() => {});
+  }, []);
   useEffect(() => {
     fetch("/api/v1/sites?pageSize=100").then((r) => r.json()).then((j: unknown) => {
       const b = j as Envelope;
@@ -384,6 +392,44 @@ export default function PayrollPage() {
           </form>
         </div>
       )}
+
+      <div className="mt-6 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+        <button onClick={() => setShowArchives((v) => !v)}
+          className="flex w-full items-center justify-between text-start">
+          <h3 className="font-semibold text-slate-900">{t("archives")}</h3>
+          <span className="text-sm text-slate-500">{showArchives ? "−" : "+"}</span>
+        </button>
+        {showArchives && (
+          archives.length === 0 ? (
+            <p className="mt-2 text-sm text-slate-500">{t("noArchives")}</p>
+          ) : (
+            <div className="mt-2 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="border-b border-slate-200 text-slate-500">
+                  <th className="px-3 py-2 text-start font-medium">{t("archiveMonth")}</th>
+                  <th className="px-3 py-2 text-center font-medium">{t("archiveStatus")}</th>
+                  <th className="px-3 py-2 text-center font-medium">{t("archiveEmployees")}</th>
+                  <th className="px-3 py-2 text-end font-medium">{t("archiveTotal")}</th>
+                </tr></thead>
+                <tbody>
+                  {archives.map((a) => (
+                    <tr key={`${a.year}-${a.month}-${a.status}`} className="border-b border-slate-100">
+                      <td className="px-3 py-2 font-medium" dir="ltr">{a.year}-{String(a.month).padStart(2, "0")}</td>
+                      <td className="px-3 py-2 text-center">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${a.status === "FINALIZED" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"}`}>
+                          {a.status}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-center">{a.employees}</td>
+                      <td className="px-3 py-2 text-end font-bold">{a.totalNet.toLocaleString("en-US")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        )}
+      </div>
     </div>
   );
 }

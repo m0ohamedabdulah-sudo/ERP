@@ -90,7 +90,8 @@
     "navContracts": "Contracts",
     "navInvoices": "Billing",
     "navPayroll": "Payroll",
-    "navRoster": "Roster"
+    "navRoster": "Roster",
+    "navAnalytics": "Analytics"
   },
   "employees": {
     "title": "Personnel",
@@ -366,7 +367,13 @@
     "cancel": "Cancel",
     "saveError": "Could not save — check the fields",
     "deleteEffectConfirm": "Delete this effect?",
-    "byMethod": "By payout method"
+    "byMethod": "By payout method",
+    "archives": "Saved archives",
+    "archiveMonth": "Month",
+    "archiveEmployees": "Employees",
+    "archiveTotal": "Total net",
+    "archiveStatus": "Status",
+    "noArchives": "No saved payrolls yet"
   },
   "roster": {
     "title": "Roster",
@@ -402,5 +409,42 @@
     "type_NIGHT": "Night",
     "type_DOUBLE": "Double",
     "type_CUSTOM": "Custom"
+  },
+  "analytics": {
+    "title": "Analytics",
+    "tabOperations": "Operations",
+    "tabFinance": "Finance",
+    "tabHR": "HR",
+    "from": "From",
+    "to": "To",
+    "site": "Site",
+    "allSites": "All sites",
+    "apply": "Apply",
+    "present": "Present",
+    "absent": "Absent",
+    "attendanceTrend": "Daily attendance",
+    "siteCoverage": "Site coverage (today)",
+    "required": "Required",
+    "active": "Active",
+    "presentToday": "Present",
+    "shortage": "Shortage",
+    "noData": "No data for this period",
+    "payroll": "Payroll",
+    "invoiced": "Invoiced",
+    "collected": "Collected",
+    "outstanding": "Outstanding receivables",
+    "monthlyOverview": "Monthly overview",
+    "totalPayroll": "Total payroll",
+    "totalInvoiced": "Total invoiced",
+    "totalCollected": "Total collected",
+    "headcountByStatus": "Headcount by status",
+    "headcountBySite": "Headcount by site",
+    "expiringDocuments": "Documents expiring in 30 days",
+    "expiredDocuments": "Expired documents",
+    "employee": "Employee",
+    "document": "Document",
+    "expiresAt": "Expires",
+    "totalActive": "Active employees",
+    "months": "Months"
   }
 }

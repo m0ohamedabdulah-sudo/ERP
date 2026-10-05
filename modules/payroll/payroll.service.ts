@@ -467,3 +467,28 @@ export async function setPayoutMethod(
     );
   });
 }
+
+export interface PayrollArchive {
+  year: number;
+  month: number;
+  status: string;
+  employees: number;
+  totalNet: number;
+}
+
+/** Saved payroll archives: finalized (and draft) months with totals. */
+export async function listPayrollArchives(): Promise<PayrollArchive[]> {
+  const groups = await prisma.payrollRecord.groupBy({
+    by: ["periodYear", "periodMonth", "status"],
+    _count: { id: true },
+    _sum: { netPay: true },
+    orderBy: [{ periodYear: "desc" }, { periodMonth: "desc" }],
+  });
+  return groups.map((g) => ({
+    year: g.periodYear,
+    month: g.periodMonth,
+    status: g.status,
+    employees: g._count.id,
+    totalNet: Math.round(Number(g._sum.netPay ?? 0) * 100) / 100,
+  }));
+}
