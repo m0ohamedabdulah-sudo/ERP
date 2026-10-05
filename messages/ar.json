@@ -89,7 +89,8 @@
     "navClients": "العملاء",
     "navContracts": "العقود",
     "navInvoices": "الفواتير",
-    "navPayroll": "المرتبات"
+    "navPayroll": "المرتبات",
+    "navRoster": "الروستر"
   },
   "employees": {
     "title": "الأفراد",
@@ -172,7 +173,12 @@
     "card": "الكارت",
     "code": "الكود",
     "noEmployees": "لا يوجد أفراد نشطين في هذا الموقع",
-    "marked": "تم حفظ التسجيلات"
+    "marked": "تم حفظ التسجيلات",
+    "upload": "رفع Excel",
+    "uploadHint": "الأعمدة: nationalId (أو cardNumber)، date بصيغة YYYY-MM-DD، code مثل P أو A أو X",
+    "uploading": "جاري الرفع…",
+    "uploadDone": "تم الاستيراد",
+    "uploadSkipped": "تم تخطي"
   },
   "clients": {
     "title": "العملاء",
@@ -361,5 +367,40 @@
     "saveError": "تعذر الحفظ — راجع البيانات",
     "deleteEffectConfirm": "حذف هذا المؤثر؟",
     "byMethod": "حسب طريقة الصرف"
+  },
+  "roster": {
+    "title": "الروستر",
+    "site": "الموقع",
+    "week": "الأسبوع",
+    "selectSite": "اختر الموقع…",
+    "newRoster": "روستر جديد",
+    "rosterName": "اسم الروستر",
+    "create": "إنشاء",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "publish": "نشر",
+    "delete": "حذف",
+    "published": "منشور",
+    "draft": "مسودة",
+    "shifts": "الورديات",
+    "manageShifts": "إدارة الورديات",
+    "addShift": "إضافة وردية",
+    "shiftName": "اسم الوردية",
+    "startTime": "من",
+    "endTime": "إلى",
+    "requiredStaff": "العدد المطلوب",
+    "shiftType": "النوع",
+    "noRoster": "لا يوجد روستر لهذا الأسبوع — أنشئ واحداً للبدء.",
+    "publishConfirm": "نشر هذا الروستر؟ لن يمكن تعديله بعد النشر.",
+    "deleteConfirm": "حذف مسودة الروستر؟",
+    "saved": "تم حفظ الروستر",
+    "saveError": "تعذر الحفظ",
+    "noEmployees": "لا يوجد أفراد نشطين في هذا الموقع",
+    "noShifts": "أضف الورديات أولاً من إدارة الورديات",
+    "type_MORNING": "صباحية",
+    "type_EVENING": "مسائية",
+    "type_NIGHT": "ليلية",
+    "type_DOUBLE": "مضاعفة",
+    "type_CUSTOM": "مخصصة"
   }
 }

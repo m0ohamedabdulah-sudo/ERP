@@ -89,7 +89,8 @@
     "navClients": "Clients",
     "navContracts": "Contracts",
     "navInvoices": "Billing",
-    "navPayroll": "Payroll"
+    "navPayroll": "Payroll",
+    "navRoster": "Roster"
   },
   "employees": {
     "title": "Personnel",
@@ -172,7 +173,12 @@
     "card": "Card",
     "code": "Code",
     "noEmployees": "No active employees at this site",
-    "marked": "records saved"
+    "marked": "records saved",
+    "upload": "Upload Excel",
+    "uploadHint": "Columns: nationalId (or cardNumber), date (YYYY-MM-DD), code (P, A, X, AL, SL…)",
+    "uploading": "Uploading…",
+    "uploadDone": "Imported",
+    "uploadSkipped": "skipped"
   },
   "clients": {
     "title": "Clients",
@@ -361,5 +367,40 @@
     "saveError": "Could not save — check the fields",
     "deleteEffectConfirm": "Delete this effect?",
     "byMethod": "By payout method"
+  },
+  "roster": {
+    "title": "Roster",
+    "site": "Site",
+    "week": "Week",
+    "selectSite": "Select a site…",
+    "newRoster": "New roster",
+    "rosterName": "Roster name",
+    "create": "Create",
+    "save": "Save",
+    "cancel": "Cancel",
+    "publish": "Publish",
+    "delete": "Delete",
+    "published": "Published",
+    "draft": "Draft",
+    "shifts": "Shifts",
+    "manageShifts": "Manage shifts",
+    "addShift": "Add shift",
+    "shiftName": "Shift name",
+    "startTime": "From",
+    "endTime": "To",
+    "requiredStaff": "Required staff",
+    "shiftType": "Type",
+    "noRoster": "No roster for this week — create one to start.",
+    "publishConfirm": "Publish this roster? It cannot be edited after publishing.",
+    "deleteConfirm": "Delete this draft roster?",
+    "saved": "Roster saved",
+    "saveError": "Could not save",
+    "noEmployees": "No active employees at this site",
+    "noShifts": "Add shifts first from Manage shifts",
+    "type_MORNING": "Morning",
+    "type_EVENING": "Evening",
+    "type_NIGHT": "Night",
+    "type_DOUBLE": "Double",
+    "type_CUSTOM": "Custom"
   }
 }

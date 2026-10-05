@@ -29,6 +29,8 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "attendance.approve", module: "attendance", description: "Approve attendance" },
   { key: "sites.view", module: "sites", description: "View sites" },
   { key: "sites.manage", module: "sites", description: "Manage sites and manpower" },
+  { key: "roster.view", module: "roster", description: "View rosters and shifts" },
+  { key: "roster.manage", module: "roster", description: "Create and publish rosters, manage shifts" },
   { key: "reports.view", module: "reports", description: "View reports" },
   { key: "reports.export", module: "reports", description: "Export reports" },
   { key: "payroll.view", module: "payroll", description: "View payroll data" },

@@ -54,6 +54,7 @@ export default function AttendancePage({
     ok: boolean;
     text: string;
   } | null>(null);
+  const [uploading, setUploading] = useState(false);
   const isAr = locale === "ar";
 
   useEffect(() => {
@@ -131,6 +132,42 @@ export default function AttendancePage({
     }
   }
 
+  async function uploadFile(file: File) {
+    if (!siteId) {
+      setMessage({ ok: false, text: t("selectSite") });
+      return;
+    }
+    setUploading(true);
+    setMessage(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("siteId", siteId);
+      const res = await fetch("/api/v1/attendance/upload", {
+        method: "POST",
+        body: fd,
+      });
+      const body = (await res.json()) as Envelope;
+      if (body.success) {
+        const r = body.data as { imported: number; skipped: number; errors: { row: number; reason: string }[] };
+        const errText = r.errors.length > 0
+          ? ` (${r.errors.slice(0, 3).map((e) => `#${e.row}: ${e.reason}`).join("; ")}${r.errors.length > 3 ? "…" : ""})`
+          : "";
+        setMessage({
+          ok: true,
+          text: `${t("uploadDone")}: ${r.imported} — ${t("uploadSkipped")}: ${r.skipped}${errText}`,
+        });
+        if (board) loadBoard();
+      } else {
+        setMessage({ ok: false, text: body.error?.message ?? t("saveError") });
+      }
+    } catch {
+      setMessage({ ok: false, text: t("saveError") });
+    } finally {
+      setUploading(false);
+    }
+  }
+
   function markAll(codeId: string) {
     if (!board) return;
     const next: Record<string, string> = {};
@@ -185,7 +222,22 @@ export default function AttendancePage({
             {isAr ? "تعليم الكل حضور" : "Mark all present"}
           </button>
         )}
+        <label className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50">
+          {uploading ? t("uploading") : t("upload")}
+          <input
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            disabled={uploading || !siteId}
+            onChange={(e) => {
+              const f = e.currentTarget.files?.[0];
+              if (f) uploadFile(f);
+              e.currentTarget.value = "";
+            }}
+          />
+        </label>
       </div>
+      <p className="mt-1 text-xs text-slate-400">{t("uploadHint")}</p>
 
       {message && (
         <p

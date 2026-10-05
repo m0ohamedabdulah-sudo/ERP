@@ -64,6 +64,7 @@ export default function DashboardLayout({
     { href: `${base}/contracts`, label: t("navContracts"), exact: false },
     { href: `${base}/invoices`, label: t("navInvoices"), exact: false },
     { href: `${base}/payroll`, label: t("navPayroll"), exact: false },
+    { href: `${base}/roster`, label: t("navRoster"), exact: false },
   ];
 
   if (!checked) {
