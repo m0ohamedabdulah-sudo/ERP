@@ -95,7 +95,12 @@
     "navDocuments": "Documents",
     "navRecruitment": "Recruitment",
     "navUsers": "Users",
-    "navAudit": "Audit log"
+    "navAudit": "Audit log",
+    "navGroupMain": "Main",
+    "navGroupOps": "Operations",
+    "navGroupFinance": "Finance",
+    "navGroupPeople": "People",
+    "navGroupAdmin": "Administration"
   },
   "employees": {
     "title": "Personnel",
@@ -183,7 +188,9 @@
     "uploadHint": "Columns: nationalId (or cardNumber), date (YYYY-MM-DD), code (P, A, X, AL, SL…)",
     "uploading": "Uploading…",
     "uploadDone": "Imported",
-    "uploadSkipped": "skipped"
+    "uploadSkipped": "skipped",
+    "present": "Present",
+    "absent": "Absent"
   },
   "clients": {
     "title": "Clients",
@@ -377,7 +384,9 @@
     "archiveEmployees": "Employees",
     "archiveTotal": "Total net",
     "archiveStatus": "Status",
-    "noArchives": "No saved payrolls yet"
+    "noArchives": "No saved payrolls yet",
+    "reopen": "Reopen",
+    "reopenConfirm": "Reopen this finalized month? It will become editable again."
   },
   "roster": {
     "title": "Roster",

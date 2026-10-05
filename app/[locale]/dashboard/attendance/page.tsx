@@ -1,7 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import {
+  Badge, Btn, Card, EmptyState, Field, Icon, PageHeader,
+  fieldInput,
+} from "../_ui";
 
 interface Code {
   id: string;
@@ -24,18 +28,35 @@ interface Board {
   employees: BoardEmployee[];
 }
 
-interface SiteOpt {
-  id: string;
-  name: string;
+interface SiteOpt { id: string; name: string }
+interface Envelope { success: boolean; data?: unknown; error?: { message?: string } }
+
+/** Pill tone per attendance code. */
+function codeTone(code: string): "green" | "red" | "amber" | "blue" | "slate" {
+  if (["P", "PP", "12", "6"].includes(code)) return "green";
+  if (code === "A" || code === "X") return "red";
+  if (code === "AL") return "amber";
+  if (code === "SL") return "blue";
+  return "slate";
 }
 
-interface Envelope {
-  success: boolean;
-  data?: unknown;
-  error?: { message?: string };
+function shiftDate(iso: string, days: number): string {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
-/** Daily attendance board: pick date + site, set codes, save. */
+function prettyDate(iso: string, locale: string): string {
+  try {
+    return new Intl.DateTimeFormat(locale === "ar" ? "ar-EG" : "en-GB", {
+      weekday: "long", day: "numeric", month: "long", timeZone: "UTC",
+    }).format(new Date(iso + "T00:00:00Z"));
+  } catch {
+    return iso;
+  }
+}
+
+/** Daily attendance: pick day + site, tap code pills per guard, save. */
 export default function AttendancePage({
   params: { locale },
 }: {
@@ -50,12 +71,10 @@ export default function AttendancePage({
   const [marks, setMarks] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{
-    ok: boolean;
-    text: string;
-  } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const isAr = locale === "ar";
+  const today = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
     Promise.all([
@@ -76,9 +95,7 @@ export default function AttendancePage({
     setLoading(true);
     setMessage(null);
     try {
-      const res = await fetch(
-        `/api/v1/attendance?date=${date}&siteId=${siteId}`,
-      );
+      const res = await fetch(`/api/v1/attendance?date=${date}&siteId=${siteId}`);
       const body = (await res.json()) as Envelope;
       if (body.success && body.data) {
         const b = body.data as Board;
@@ -98,6 +115,37 @@ export default function AttendancePage({
     }
   }, [date, siteId, t]);
 
+  // Auto-load when both are picked.
+  useEffect(() => {
+    if (siteId && date) loadBoard();
+  }, [siteId, date, loadBoard]);
+
+  const codeById = useMemo(() => new Map(codes.map((c) => [c.id, c])), [codes]);
+
+  const stats = useMemo(() => {
+    if (!board) return null;
+    let present = 0, absent = 0, unmarked = 0;
+    for (const e of board.employees) {
+      const codeId = marks[e.id];
+      if (!codeId) { unmarked += 1; continue; }
+      const c = codeById.get(codeId);
+      if (!c) { unmarked += 1; continue; }
+      if (c.countsAsPresent) present += 1;
+      else if (c.code === "A" || c.code === "X") absent += 1;
+      else present += 1; // leaves count as non-absence here
+    }
+    return { present, absent, unmarked, total: board.employees.length };
+  }, [board, marks, codeById]);
+
+  const dirty = useMemo(() => {
+    if (!board) return false;
+    for (const e of board.employees) {
+      const saved = e.attendance?.codeId ?? "";
+      if ((marks[e.id] ?? "") !== saved) return true;
+    }
+    return false;
+  }, [board, marks]);
+
   async function save() {
     if (!board) return;
     setSaving(true);
@@ -106,10 +154,7 @@ export default function AttendancePage({
       const entries = Object.entries(marks)
         .filter(([, codeId]) => codeId)
         .map(([employeeId, codeId]) => ({ employeeId, codeId }));
-      if (entries.length === 0) {
-        setSaving(false);
-        return;
-      }
+      if (entries.length === 0) { setSaving(false); return; }
       const res = await fetch("/api/v1/attendance", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -120,10 +165,7 @@ export default function AttendancePage({
         setMessage({ ok: true, text: t("saved") });
         loadBoard();
       } else {
-        setMessage({
-          ok: false,
-          text: body.error?.message ?? t("saveError"),
-        });
+        setMessage({ ok: false, text: body.error?.message ?? t("saveError") });
       }
     } catch {
       setMessage({ ok: false, text: t("saveError") });
@@ -133,30 +175,21 @@ export default function AttendancePage({
   }
 
   async function uploadFile(file: File) {
-    if (!siteId) {
-      setMessage({ ok: false, text: t("selectSite") });
-      return;
-    }
+    if (!siteId) { setMessage({ ok: false, text: t("selectSite") }); return; }
     setUploading(true);
     setMessage(null);
     try {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("siteId", siteId);
-      const res = await fetch("/api/v1/attendance/upload", {
-        method: "POST",
-        body: fd,
-      });
+      const res = await fetch("/api/v1/attendance/upload", { method: "POST", body: fd });
       const body = (await res.json()) as Envelope;
       if (body.success) {
         const r = body.data as { imported: number; skipped: number; errors: { row: number; reason: string }[] };
         const errText = r.errors.length > 0
           ? ` (${r.errors.slice(0, 3).map((e) => `#${e.row}: ${e.reason}`).join("; ")}${r.errors.length > 3 ? "…" : ""})`
           : "";
-        setMessage({
-          ok: true,
-          text: `${t("uploadDone")}: ${r.imported} — ${t("uploadSkipped")}: ${r.skipped}${errText}`,
-        });
+        setMessage({ ok: true, text: `${t("uploadDone")}: ${r.imported} — ${t("uploadSkipped")}: ${r.skipped}${errText}` });
         if (board) loadBoard();
       } else {
         setMessage({ ok: false, text: body.error?.message ?? t("saveError") });
@@ -168,147 +201,219 @@ export default function AttendancePage({
     }
   }
 
-  function markAll(codeId: string) {
+  function markAllPresent() {
     if (!board) return;
+    const p = codes.find((c) => c.code === "P");
+    if (!p) return;
     const next: Record<string, string> = {};
-    for (const e of board.employees) next[e.id] = codeId;
+    for (const e of board.employees) next[e.id] = p.id;
     setMarks(next);
   }
 
-  const presentCode = codes.find((c) => c.code === "P");
+  const pillBase =
+    "inline-flex min-w-11 items-center justify-center rounded-lg px-2.5 py-1.5 text-[13px] font-bold transition";
+
+  function pillClass(code: Code, selected: boolean): string {
+    const tone = codeTone(code.code);
+    if (selected) {
+      return {
+        green: "bg-emerald-600 text-white shadow-sm",
+        red: "bg-rose-600 text-white shadow-sm",
+        amber: "bg-amber-500 text-white shadow-sm",
+        blue: "bg-sky-600 text-white shadow-sm",
+        slate: "bg-slate-600 text-white shadow-sm",
+      }[tone];
+    }
+    return {
+      green: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200 hover:bg-emerald-100",
+      red: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200 hover:bg-rose-100",
+      amber: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200 hover:bg-amber-100",
+      blue: "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200 hover:bg-sky-100",
+      slate: "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200 hover:bg-slate-200",
+    }[tone];
+  }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-slate-900">{t("title")}</h1>
+    <div className="pb-28">
+      <PageHeader
+        title={t("title")}
+        subtitle={prettyDate(date, locale)}
+        actions={
+          <>
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              <Icon name="upload" className="h-4 w-4" />
+              {uploading ? t("uploading") : t("upload")}
+              <input
+                type="file" accept=".xlsx,.xls" className="hidden"
+                disabled={uploading || !siteId}
+                onChange={(e) => {
+                  const f = e.currentTarget.files?.[0];
+                  if (f) uploadFile(f);
+                  e.currentTarget.value = "";
+                }}
+              />
+            </label>
+            {board && (
+              <Btn variant="outline" onClick={markAllPresent}>
+                <Icon name="check" className="h-4 w-4" />
+                {isAr ? "تعليم الكل حضور" : "Mark all present"}
+              </Btn>
+            )}
+          </>
+        }
+      />
 
-      <div className="mt-4 flex flex-wrap items-end gap-2">
-        <label className="block text-sm font-medium text-slate-700">
-          {t("date")}
-          <input
-            type="date"
-            value={date}
-            max={new Date().toISOString().slice(0, 10)}
-            onChange={(e) => setDate(e.currentTarget.value)}
-            className="mt-1 block rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
-        </label>
-        <label className="block text-sm font-medium text-slate-700">
-          {t("site")}
-          <select
-            value={siteId}
-            onChange={(e) => setSiteId(e.currentTarget.value)}
-            className="mt-1 block min-w-48 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          >
-            <option value="">{t("selectSite")}</option>
-            {sites.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          onClick={loadBoard}
-          disabled={!siteId || loading}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {t("load")}
-        </button>
-        {board && presentCode && (
-          <button
-            onClick={() => markAll(presentCode.id)}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
-          >
-            {isAr ? "تعليم الكل حضور" : "Mark all present"}
-          </button>
+      {/* Controls */}
+      <Card className="mt-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex items-end gap-1">
+            <button
+              onClick={() => setDate(shiftDate(date, -1))}
+              className="flex h-[42px] w-10 items-center justify-center rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-50"
+              aria-label="previous day"
+            >
+              <Icon name={isAr ? "chevronRight" : "chevronLeft"} className="h-5 w-5" />
+            </button>
+            <Field label={t("date")} className="w-40">
+              <input
+                type="date" value={date} max={today}
+                onChange={(e) => e.currentTarget.value && setDate(e.currentTarget.value)}
+                className={fieldInput}
+              />
+            </Field>
+            <button
+              onClick={() => date < today && setDate(shiftDate(date, 1))}
+              disabled={date >= today}
+              className="flex h-[42px] w-10 items-center justify-center rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+              aria-label="next day"
+            >
+              <Icon name={isAr ? "chevronLeft" : "chevronRight"} className="h-5 w-5" />
+            </button>
+            {date !== today && (
+              <button
+                onClick={() => setDate(today)}
+                className="h-[42px] rounded-xl bg-blue-50 px-3 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+              >
+                {isAr ? "اليوم" : "Today"}
+              </button>
+            )}
+          </div>
+          <Field label={t("site")} className="min-w-52 flex-1 sm:max-w-xs">
+            <select
+              value={siteId}
+              onChange={(e) => setSiteId(e.currentTarget.value)}
+              className={fieldInput}
+            >
+              <option value="">{t("selectSite")}</option>
+              {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </Field>
+        </div>
+        {!siteId && (
+          <p className="mt-2 text-xs text-slate-400">{t("uploadHint")}</p>
         )}
-        <label className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50">
-          {uploading ? t("uploading") : t("upload")}
-          <input
-            type="file"
-            accept=".xlsx,.xls"
-            className="hidden"
-            disabled={uploading || !siteId}
-            onChange={(e) => {
-              const f = e.currentTarget.files?.[0];
-              if (f) uploadFile(f);
-              e.currentTarget.value = "";
-            }}
-          />
-        </label>
-      </div>
-      <p className="mt-1 text-xs text-slate-400">{t("uploadHint")}</p>
+      </Card>
 
       {message && (
-        <p
-          className={`mt-4 rounded-lg px-3 py-2 text-sm ${
-            message.ok
-              ? "bg-green-50 text-green-700"
-              : "bg-red-50 text-red-700"
-          }`}
-        >
+        <div className={`mt-4 rounded-2xl px-4 py-3 text-sm font-medium ${message.ok ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
           {message.text}
-        </p>
-      )}
-
-      {board && (
-        <div className="mt-4 overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500">
-                <th className="px-4 py-3 text-start font-medium">
-                  {t("employee")}
-                </th>
-                <th className="px-4 py-3 text-start font-medium">{t("card")}</th>
-                <th className="px-4 py-3 text-start font-medium">{t("code")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {board.employees.map((e) => (
-                <tr key={e.id} className="border-b border-slate-100">
-                  <td className="px-4 py-2.5 font-medium text-slate-900">
-                    {e.fullNameAr}
-                  </td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-slate-500">
-                    {e.cardNumber}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <select
-                      value={marks[e.id] ?? ""}
-                      onChange={(ev) =>
-                        setMarks({ ...marks, [e.id]: ev.currentTarget.value })
-                      }
-                      className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-                    >
-                      <option value="">—</option>
-                      {codes.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {isAr ? c.labelAr : c.labelEn} ({c.code})
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {board.employees.length === 0 && (
-            <p className="px-4 py-8 text-center text-sm text-slate-500">
-              {t("noEmployees")}
-            </p>
-          )}
         </div>
       )}
 
+      {/* Summary strip */}
+      {board && stats && (
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          <Card className="flex items-center gap-3 !p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+              <Icon name="check" className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xl font-extrabold tabular-nums text-slate-900">{stats.present}</p>
+              <p className="text-xs text-slate-500">{t("present")}</p>
+            </div>
+          </Card>
+          <Card className="flex items-center gap-3 !p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+              <Icon name="x" className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xl font-extrabold tabular-nums text-slate-900">{stats.absent}</p>
+              <p className="text-xs text-slate-500">{t("absent")}</p>
+            </div>
+          </Card>
+          <Card className="flex items-center gap-3 !p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+              <Icon name="clock" className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xl font-extrabold tabular-nums text-slate-900">{stats.unmarked}</p>
+              <p className="text-xs text-slate-500">{isAr ? "بدون تعليم" : "Unmarked"}</p>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Board */}
+      {loading && (
+        <Card className="mt-4 flex items-center justify-center py-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-700 border-t-transparent" />
+        </Card>
+      )}
+
+      {board && !loading && (
+        <Card className="mt-4 !p-2 sm:!p-3">
+          {board.employees.length === 0 ? (
+            <EmptyState icon="users" title={t("noEmployees")} />
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {board.employees.map((e) => {
+                const selectedId = marks[e.id] ?? "";
+                return (
+                  <li key={e.id} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="truncate text-[15px] font-semibold text-slate-900">{e.fullNameAr}</p>
+                      <p className="font-mono text-xs text-slate-400" dir="ltr">{e.cardNumber}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5" dir="ltr">
+                      {codes.map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => setMarks({ ...marks, [e.id]: selectedId === c.id ? "" : c.id })}
+                          title={isAr ? c.labelAr : c.labelEn}
+                          className={`${pillBase} ${pillClass(c, selectedId === c.id)}`}
+                        >
+                          {c.code}
+                        </button>
+                      ))}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+      )}
+
+      {!board && !loading && siteId && (
+        <Card className="mt-4">
+          <EmptyState icon="attendance" title={t("title")} hint={t("selectSite")} />
+        </Card>
+      )}
+
+      {/* Sticky save bar */}
       {board && board.employees.length > 0 && (
-        <div className="mt-4">
-          <button
-            onClick={save}
-            disabled={saving}
-            className="rounded-lg bg-slate-900 px-6 py-2.5 text-sm font-medium text-white disabled:opacity-50"
-          >
-            {t("save")}
-          </button>
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/90 px-4 py-3 backdrop-blur">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+            <p className="text-sm text-slate-500">
+              {dirty
+                ? (isAr ? "في تغييرات غير محفوظة" : "Unsaved changes")
+                : (isAr ? "كل التغييرات محفوظة" : "All changes saved")}
+              <span className={`ms-2 inline-block h-2 w-2 rounded-full ${dirty ? "bg-amber-500" : "bg-emerald-500"}`} />
+            </p>
+            <Btn onClick={save} disabled={saving || !dirty} className="px-8 py-3 text-[15px]">
+              {saving ? (isAr ? "جاري الحفظ…" : "Saving…") : t("save")}
+            </Btn>
+          </div>
         </div>
       )}
     </div>

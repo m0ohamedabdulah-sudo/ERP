@@ -95,7 +95,12 @@
     "navDocuments": "المستندات",
     "navRecruitment": "التوظيف",
     "navUsers": "المستخدمين",
-    "navAudit": "سجل التدقيق"
+    "navAudit": "سجل التدقيق",
+    "navGroupMain": "الرئيسية",
+    "navGroupOps": "العمليات",
+    "navGroupFinance": "المالية",
+    "navGroupPeople": "الأفراد",
+    "navGroupAdmin": "الإدارة"
   },
   "employees": {
     "title": "الأفراد",
@@ -183,7 +188,9 @@
     "uploadHint": "الأعمدة: nationalId (أو cardNumber)، date بصيغة YYYY-MM-DD، code مثل P أو A أو X",
     "uploading": "جاري الرفع…",
     "uploadDone": "تم الاستيراد",
-    "uploadSkipped": "تم تخطي"
+    "uploadSkipped": "تم تخطي",
+    "present": "حاضر",
+    "absent": "غائب"
   },
   "clients": {
     "title": "العملاء",
@@ -377,7 +384,9 @@
     "archiveEmployees": "الأفراد",
     "archiveTotal": "إجمالي الصافي",
     "archiveStatus": "الحالة",
-    "noArchives": "لا توجد مرتبات محفوظة بعد"
+    "noArchives": "لا توجد مرتبات محفوظة بعد",
+    "reopen": "إعادة فتح",
+    "reopenConfirm": "إعادة فتح هذا الشهر المعتمد؟ سيصبح قابلاً للتعديل مرة أخرى."
   },
   "roster": {
     "title": "الروستر",
