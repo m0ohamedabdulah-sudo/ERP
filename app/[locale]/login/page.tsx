@@ -56,7 +56,9 @@ export default function LoginPage({
       }
       const next = searchParams.get("next");
       router.replace(
-        next && next.startsWith("/") && !next.startsWith("//") ? next : `/${locale}/`,
+        next && next.startsWith("/") && !next.startsWith("//")
+          ? next
+          : `/${locale}/dashboard`,
       );
     } catch {
       setError(t("invalidCredentials"));
