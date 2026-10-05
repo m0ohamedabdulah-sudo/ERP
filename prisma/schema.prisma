@@ -295,6 +295,8 @@ model Employee {
   shiftId          String?        @db.Uuid
   shift            Shift?         @relation(fields: [shiftId], references: [id], onDelete: SetNull)
   salary           Decimal?       @db.Decimal(12, 2)
+  payoutMethod     PayoutMethod   @default(CASH)
+  bankAccount      String?
   contractType     String?
   insuranceStatus  String?
   status           EmployeeStatus @default(ACTIVE)
@@ -310,6 +312,7 @@ model Employee {
   leaves            Leave[]
   transfers         Transfer[]
   payrollRecords    PayrollRecord[]
+  payrollAdjustments PayrollAdjustment[]
   /// Set when the employee was hired through the recruitment pipeline.
   candidateId       String?            @unique @db.Uuid
   candidate         Candidate?         @relation(fields: [candidateId], references: [id], onDelete: SetNull)
@@ -566,6 +569,7 @@ model PayrollRecord {
   overtimeHours     Decimal   @default(0) @db.Decimal(6, 2)
   deductions        Decimal   @default(0) @db.Decimal(12, 2)
   advances          Decimal   @default(0) @db.Decimal(12, 2)
+  bonus             Decimal   @default(0) @db.Decimal(12, 2)
   netPay            Decimal   @db.Decimal(12, 2)
   status            String    @default("DRAFT")
   computedAt        DateTime?
@@ -574,6 +578,40 @@ model PayrollRecord {
 
   @@unique([employeeId, periodYear, periodMonth])
   @@index([periodYear, periodMonth])
+}
+
+// Manual payroll adjustments per employee per month — the
+// "financial effects" (fines, cut days, advances, bonuses, allowances).
+// Applied when a payroll run is generated.
+model PayrollAdjustment {
+  id         String                @id @default(uuid()) @db.Uuid
+  employeeId String                @db.Uuid
+  employee   Employee              @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  periodYear Int
+  periodMonth Int // 1-12
+  kind       PayrollAdjustmentKind
+  amount     Decimal               @db.Decimal(12, 2)
+  notes      String?
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+
+  @@index([employeeId, periodYear, periodMonth])
+  @@index([periodYear, periodMonth])
+}
+
+enum PayrollAdjustmentKind {
+  FINE // جزاء — deduction
+  CUT // خصم — deduction
+  ADVANCE // سلفة — deduction
+  BONUS // مكافأة — addition
+  ALLOWANCE // بدل — addition
+}
+
+// How an employee is paid (bank transfers / cash payroll).
+enum PayoutMethod {
+  CASH // نقدي
+  BANK_TRANSFER // تحويل بنكي
+  E_WALLET // محفظة إلكترونية
 }
 
 // ------------------------- Platform -------------------------
