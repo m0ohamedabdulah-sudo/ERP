@@ -2,6 +2,9 @@
 -- (bootstrap.ts ensureRolesAndPermissions covers fresh setups; this covers
 -- existing databases.)
 
+-- Ensure the UUID generator exists (0001_init creates it, but be explicit).
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 INSERT INTO "Permission" ("id", "key", "module", "description", "createdAt")
 VALUES
   (gen_random_uuid(), 'roster.view', 'roster', 'View rosters and shifts', now()),
