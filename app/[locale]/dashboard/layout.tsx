@@ -60,6 +60,9 @@ export default function DashboardLayout({
     { href: `${base}/employees`, label: t("navEmployees"), exact: false },
     { href: `${base}/sites`, label: t("navSites"), exact: false },
     { href: `${base}/attendance`, label: t("navAttendance"), exact: false },
+    { href: `${base}/clients`, label: t("navClients"), exact: false },
+    { href: `${base}/contracts`, label: t("navContracts"), exact: false },
+    { href: `${base}/invoices`, label: t("navInvoices"), exact: false },
   ];
 
   if (!checked) {
