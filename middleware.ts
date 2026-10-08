@@ -16,6 +16,8 @@ const PUBLIC_PATHS = [
   /^\/setup\/?$/,
   /^\/[^/]+\/login\/?$/,
   /^\/[^/]+\/setup\/?$/,
+  // Token-gated guard check-in page (the QR token is the gate).
+  /^\/[^/]+\/checkin(\/.*)?\/?$/,
 ];
 
 async function hasValidSession(req: NextRequest): Promise<boolean> {

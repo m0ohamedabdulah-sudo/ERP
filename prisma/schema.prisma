@@ -250,6 +250,8 @@ model Site {
   aiInsights           AIInsight[]
   contractSites        ContractSite[]
   desiredByCandidates  Candidate[]
+  checkins             SiteCheckin[]
+  qrTokens             SiteQrToken[]
 
   @@unique([sectorId, name])
   @@index([sectorId])
@@ -317,6 +319,7 @@ model Employee {
   candidateId       String?            @unique @db.Uuid
   candidate         Candidate?         @relation(fields: [candidateId], references: [id], onDelete: SetNull)
   documents         EmployeeDocument[]
+  checkins          SiteCheckin[]
 
   @@index([sectorId])
   @@index([siteId])
@@ -347,6 +350,7 @@ model Shift {
   transfersFrom        Transfer[]            @relation("TransferFromShift")
   transfersTo          Transfer[]            @relation("TransferToShift")
   contractRates        ContractRate[]
+  checkins             SiteCheckin[]
 
   @@unique([siteId, name])
   @@index([siteId])
@@ -1087,4 +1091,44 @@ model EmployeeDocument {
   @@index([employeeId])
   @@index([expiresAt])
   @@index([status])
+}
+
+/// --- Batch 1: Operations Command Center (غرفة العمليات) -----------------
+
+enum CheckinMethod {
+  QR
+  MANUAL
+}
+
+model SiteCheckin {
+  id           String        @id @default(uuid()) @db.Uuid
+  employeeId   String        @db.Uuid
+  employee     Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  siteId       String        @db.Uuid
+  site         Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  shiftId      String?       @db.Uuid
+  shift        Shift?        @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  checkedInAt  DateTime
+  checkedOutAt DateTime?
+  method       CheckinMethod @default(QR)
+  note         String?
+  createdAt    DateTime      @default(now())
+
+  @@index([employeeId])
+  @@index([siteId])
+  @@index([checkedInAt])
+  @@index([employeeId, checkedOutAt])
+}
+
+model SiteQrToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  siteId    String   @db.Uuid
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  active    Boolean  @default(true)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([siteId])
+  @@index([active, expiresAt])
 }

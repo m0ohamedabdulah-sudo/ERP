@@ -62,6 +62,10 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "compliance.manage", module: "compliance", description: "Document-type CRUD, document writes, expiry sweep" },
   { key: "compliance.verify", module: "compliance", description: "Verify candidate/employee documents" },
   { key: "compliance.override", module: "compliance", description: "Hire despite compliance issues (audited)" },
+  // --- Batch 1: Operations Command Center -------------------------------
+  { key: "operations.view", module: "operations", description: "View the live operations command center board" },
+  { key: "checkin.manage", module: "operations", description: "Manual guard check-in / check-out by supervisors" },
+  { key: "checkin.qr", module: "operations", description: "View and rotate site QR check-in tokens" },
 ];
 
 export const ROLES = [
