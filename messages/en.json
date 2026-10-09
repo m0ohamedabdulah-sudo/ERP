@@ -101,7 +101,8 @@
     "navGroupOps": "Operations",
     "navGroupFinance": "Finance",
     "navGroupPeople": "People",
-    "navGroupAdmin": "Administration"
+    "navGroupAdmin": "Administration",
+    "navShortages": "Shortages"
   },
   "employees": {
     "title": "Personnel",
@@ -633,5 +634,43 @@
     "tryAgain": "Try again",
     "loading": "Loading…",
     "processing": "Recording…"
+  },
+  "shortage": {
+    "title": "Shortages",
+    "subtitle": "Required vs actual coverage per site and shift",
+    "date": "Date",
+    "shift": "Shift",
+    "site": "Site",
+    "allSites": "All sites",
+    "refresh": "Refresh",
+    "loadError": "Couldn't load the shortage report.",
+    "noSites": "No active sites.",
+    "required": "Required",
+    "present": "Present",
+    "rostered": "Rostered",
+    "absent": "Absent",
+    "onLeave": "On leave",
+    "shortage": "Shortage",
+    "surplus": "Surplus",
+    "sites": "Sites",
+    "redZones": "Red zones",
+    "severity": "Severity",
+    "normal": "Normal",
+    "warning": "Warning",
+    "critical": "Critical",
+    "fromManpower": "from manpower plan",
+    "fromShiftDefault": "from shift default",
+    "unassigned": "No shift assigned",
+    "suggest": "Suggest replacements",
+    "replacementsTitle": "Replacement candidates",
+    "noCandidates": "No eligible candidates found for this date.",
+    "candidatesHint": "Eligibility is derived from attendance and roster records — never invented.",
+    "close": "Close",
+    "homeSite": "Home site",
+    "sameSector": "Same sector",
+    "noRoster": "No roster assignment that day",
+    "noAttendance": "No attendance record that day",
+    "usualShift": "Usual shift",
+    "shortBy": "short by"
   }
 }

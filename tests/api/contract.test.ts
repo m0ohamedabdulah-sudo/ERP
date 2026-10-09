@@ -88,6 +88,59 @@ run('API contracts', () => {
     }
   });
 
+  it('health check reports DB connectivity and uptime', async () => {
+    const { status, body } = await get<{ db: string; uptime: number }>(
+      '/api/v1/health',
+    );
+    expect(status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.data.db).toBe('ok');
+    expect(typeof body.data.uptime).toBe('number');
+  });
+
+  it('shortages engine returns per-site/shift rows (or 401 without a session)', async () => {
+    const { status, body } = await get<{
+      date: string;
+      sites: Array<{
+        siteId: string;
+        shifts: Array<{
+          shiftId: string;
+          required: number;
+          rostered: number;
+          present: number;
+          absent: number;
+          onLeave: number;
+          shortage: number;
+          severity: string;
+        }>;
+        totals: { required: number; shortage: number; severity: string };
+      }>;
+      totals: { sites: number; redZones: number };
+    }>('/api/v1/shortages?date=2026-10-09');
+    expect([200, 401]).toContain(status);
+    if (status === 200) {
+      expect(body.success).toBe(true);
+      expect(body.data.date).toBe('2026-10-09');
+      expect(Array.isArray(body.data.sites)).toBe(true);
+      expect(typeof body.data.totals.sites).toBe('number');
+      for (const site of body.data.sites) {
+        for (const shift of site.shifts) {
+          expect(shift.shortage).toBeGreaterThanOrEqual(0);
+          expect(['NORMAL', 'WARNING', 'CRITICAL']).toContain(shift.severity);
+          expect(shift.shortage).toBe(
+            Math.max(0, shift.required - shift.present),
+          );
+        }
+      }
+    }
+  });
+
+  it('replacements endpoint validates its inputs', async () => {
+    // Missing siteId → 422 validation (or 401 without a session).
+    const { status } = await get('/api/v1/shortages/replacements');
+    expect([401, 422]).toContain(status);
+  });
+
   it('returns 401 for dashboard without a session', async () => {
     // Sanity: the endpoint requires auth — an obviously invalid cookie must not pass.
     const { status } = await get('/api/v1/dashboard/summary', 'session=invalid');

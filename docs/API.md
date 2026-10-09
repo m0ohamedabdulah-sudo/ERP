@@ -614,3 +614,32 @@ Returns `{ checked, expiring, expired, notified }`.
 Error codes: `DOCUMENT_TYPE_NOT_FOUND`, `DOCUMENT_TYPE_CODE_EXISTS`,
 `DOCUMENT_TYPE_IN_USE`, `CANDIDATE_NOT_FOUND`, `CANDIDATE_DOCUMENT_NOT_FOUND`,
 `EMPLOYEE_NOT_FOUND`, `EMPLOYEE_DOCUMENT_NOT_FOUND`, `SITE_NOT_FOUND`.
+
+---
+
+## Shortage engine (Stage 4)
+
+### GET /api/v1/shortages — `shortage.view`
+Shortage report per date × site × shift. Query: `date=YYYY-MM-DD`
+(default today), `siteId`, `sectorId` (all optional).
+
+Per shift: `required` (effective `ManpowerRequirement`, shift-specific
+then site-level, else `Shift.requiredStaff`; `requiredSource` says which),
+`rostered` (distinct employees on PUBLISHED/LOCKED rosters — one employee
+counts once), `present` (codes with `countsAsPresent`), `absent` (code A),
+`onLeave` (AL/SL — never confused with absence), `shortage`,
+`surplus`, `pct`, `severity` (NORMAL/WARNING/CRITICAL).
+Attendance rows with no shift attribution are reported honestly in the
+site-level `unassigned` bucket, never fabricated into a shift.
+Each computed row is upserted into the `Shortage` table
+(`siteId+shiftId+date`) for trend history.
+
+### GET /api/v1/shortages/replacements — `shortage.view`
+Eligible replacement candidates for `siteId` (+ optional `shiftId`,
+`date`, `limit` 1–50). Rules, all explainable: ACTIVE employee in the
+site's sector, no attendance record that date, no roster assignment that
+date (no simultaneous-assignment conflict). Ranked home-site first.
+Each candidate carries `reasons` (e.g. `home-site`,
+`no-roster-assignment-on-date`) — availability is derived from records,
+never invented.
+`404 SITE_NOT_FOUND` / `SHIFT_NOT_FOUND`.

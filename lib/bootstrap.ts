@@ -66,6 +66,8 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "operations.view", module: "operations", description: "View the live operations command center board" },
   { key: "checkin.manage", module: "operations", description: "Manual guard check-in / check-out by supervisors" },
   { key: "checkin.qr", module: "operations", description: "View and rotate site QR check-in tokens" },
+  // --- Stage 4: shortage engine -------------------------------------------
+  { key: "shortage.view", module: "shortage", description: "View shortage reports and replacement suggestions" },
 ];
 
 export const ROLES = [

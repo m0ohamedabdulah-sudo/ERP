@@ -101,7 +101,8 @@
     "navGroupOps": "العمليات",
     "navGroupFinance": "المالية",
     "navGroupPeople": "الأفراد",
-    "navGroupAdmin": "الإدارة"
+    "navGroupAdmin": "الإدارة",
+    "navShortages": "العجز"
   },
   "employees": {
     "title": "الأفراد",
@@ -633,5 +634,43 @@
     "tryAgain": "حاول مرة أخرى",
     "loading": "جارٍ التحميل…",
     "processing": "جارٍ التسجيل…"
+  },
+  "shortage": {
+    "title": "العجز",
+    "subtitle": "المطلوب مقابل الفعلي لكل موقع وشيفت",
+    "date": "التاريخ",
+    "shift": "الشيفت",
+    "site": "الموقع",
+    "allSites": "كل المواقع",
+    "refresh": "تحديث",
+    "loadError": "تعذر تحميل تقرير العجز.",
+    "noSites": "لا توجد مواقع نشطة.",
+    "required": "المطلوب",
+    "present": "الحاضر",
+    "rostered": "المجدول",
+    "absent": "الغائب",
+    "onLeave": "في إجازة",
+    "shortage": "العجز",
+    "surplus": "الفائض",
+    "sites": "المواقع",
+    "redZones": "مناطق حرجة",
+    "severity": "الخطورة",
+    "normal": "طبيعي",
+    "warning": "تحذير",
+    "critical": "حرج",
+    "fromManpower": "من خطة القوى العاملة",
+    "fromShiftDefault": "من افتراضي الشيفت",
+    "unassigned": "بدون شيفت محدد",
+    "suggest": "اقتراح بدلاء",
+    "replacementsTitle": "المرشحون البدلاء",
+    "noCandidates": "لا يوجد مرشحون مؤهلون لهذا التاريخ.",
+    "candidatesHint": "الأهلية محسوبة من سجلات الحضور والروستر — مش متألفة.",
+    "close": "إغلاق",
+    "homeSite": "نفس الموقع",
+    "sameSector": "نفس القطاع",
+    "noRoster": "مفيش تعيين روستر في اليوم ده",
+    "noAttendance": "مفيش سجل حضور في اليوم ده",
+    "usualShift": "الشيفت المعتاد",
+    "shortBy": "العجز"
   }
 }

@@ -78,6 +78,7 @@ export default function DashboardLayout({
       links: [
         { href: `${base}/attendance`, label: t("navAttendance"), icon: "attendance" },
         { href: `${base}/operations`, label: t("navOperations"), icon: "clock" },
+        { href: `${base}/shortages`, label: t("navShortages"), icon: "x" },
         { href: `${base}/roster`, label: t("navRoster"), icon: "roster" },
         { href: `${base}/employees`, label: t("navEmployees"), icon: "users" },
         { href: `${base}/sites`, label: t("navSites"), icon: "sites" },
